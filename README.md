@@ -41,7 +41,7 @@ Each builds into what its registry serves, and `pnpm check:recorders` installs e
 | PyPI `q6-report` | the behave recorder, standard library only | `python3 -m pip wheel --no-deps` on `recorders/python` | a `.whl` |
 | Maven Central `io.github.yopeso:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
 
-The npm package stays `"private": true` and every version stays `0.0.0` until the first release.
+Every version stays `0.0.0` until the first release, under [Releasing](#releasing).
 `recorders/python/LICENSE` is a copy of `LICENSE`, because a wheel can only carry a file from its own folder, and the recorder test fails if the wheel's copy differs.
 Maven Central verified the group `io.github.yopeso` to Yopeso through its GitHub organisation.
 
@@ -380,3 +380,59 @@ junit5
 Each suite's `expected.json` holds the exact records it must produce, with what changes between machines left out.
 A new recorder adds a suite under `recorder-test/` and a line in `recorder-test/run.ts`.
 `--write-expected` writes the file from a run, and every line of it is then read against the suite by a person, because a record copied from a wrong recorder proves nothing.
+
+## Releasing
+
+A release is a tag, `v` and the version, and the version is three numbers, e.g: `0.1.0`, as npm and PyPI spell a pre-release differently.
+`pnpm set-version 0.1.0` writes it into the four places that carry it, and that change reaches `main` through a pull request like any other:
+
+```bash
+git switch --create release-0.1.0
+pnpm set-version 0.1.0
+git commit --message "Release 0.1.0" -- package.json recorders/python/pyproject.toml recorders/junit5/build.gradle.kts recorder-test/junit5/build.gradle.kts
+git push --set-upstream origin release-0.1.0
+gh pr create --fill
+```
+
+Once it is merged, the tag goes on `main` as it is on GitHub:
+
+```bash
+git fetch origin
+git tag v0.1.0 origin/main
+git push origin v0.1.0
+```
+
+The tag starts `.github/workflows/release.yml`:
+
+| Job | Does |
+|---|---|
+| `checks` | every check, as on a push |
+| `build` | fails unless all four places carry the tag's version, then builds the npm package and the wheel |
+| `npm`, `pypi` | wait for a maintainer to approve the `release` environment, then publish through trusted publishing, so no token is kept; npm skips a version it already has |
+| `installed` | installs the command from npm and the behave recorder from PyPI, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
+
+A published version is never replaced: PyPI refuses a file name once used, and npm unpublishes a new package only within 72 hours, so a fault is fixed by the next version.
+The JUnit 5 recorder joins once Maven Central's Portal token and signing key are kept as secrets of the `release` environment; until then it is built from this repository.
+
+Once, before the first release:
+
+| Where | What |
+|---|---|
+| This repository's settings, Environments | the environment `release`, deployable from tags matching `v*` only, with the maintainers who approve a release as its required reviewers |
+| pypi.org, Publishing | a pending trusted publisher: owner `yopeso`, repository `q6-report`, workflow `release.yml`, environment `release` |
+
+npm takes a trusted publisher only for a package it already has, so the first version is published by hand, from the tarball the release run built.
+While the run of `v0.1.0` waits for its approval, a maintainer of the npm package downloads it, publishes it and then approves the run, whose `npm` job finds 0.1.0 there and skips it:
+
+```bash
+gh run download "$(gh run list --workflow release.yml --branch v0.1.0 --limit 1 --json databaseId --jq '.[0].databaseId')" --name packages --dir out
+npm publish out/npm/q6-report-0.1.0.tgz --access public
+```
+
+npm's trusted publisher is created on the day of the next release, and not before, as one that has not published within 2 days expires.
+It allows `npm publish` only when told to, and `npm trust` needs npm 11.15.0 or newer:
+
+```bash
+npm trust github q6-report --repository yopeso/q6-report --file release.yml --environment release --allow-publish
+```
+

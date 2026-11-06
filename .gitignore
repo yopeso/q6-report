@@ -10,6 +10,8 @@ __pycache__/
 
 # What pnpm pack builds.
 dist/
+# What the release workflow builds, and what gh run download brings back of it.
+out/
 
 # What pnpm installs.
 node_modules/

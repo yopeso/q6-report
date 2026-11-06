@@ -1,6 +1,5 @@
 {
   "name": "q6-report",
-  "private": true,
   "version": "0.0.0",
   "description": "A test report with history that opens from one file, with no server and no network",
   "license": "Apache-2.0",
@@ -53,7 +52,8 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm check:names && pnpm check:report && pnpm check:recorders",
     "check:names": "node scripts/check-names.mjs",
     "check:report": "tsx scripts/check-report.ts",
-    "check:recorders": "tsx recorder-test/run.ts"
+    "check:recorders": "tsx recorder-test/run.ts",
+    "set-version": "node scripts/version.mjs set"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
