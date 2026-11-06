@@ -1,0 +1,15 @@
+# What Gradle and Kotlin leave beside the recorder and its test suite.
+.gradle/
+.kotlin/
+build/
+# What an editor's Java extension builds beside a Gradle project it opens.
+bin/
+__pycache__/
+# What a newer pip leaves beside the recorder when it builds the wheel in place.
+*.egg-info/
+
+# What pnpm pack builds.
+dist/
+
+# What pnpm installs.
+node_modules/

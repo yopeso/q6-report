@@ -1,0 +1,19 @@
+[build-system]
+# 77 is the first to read the licence as an SPDX expression.
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "q6-report"
+version = "0.0.0"
+description = "Recorders that write a test run for q6-report, a test report with history that opens from one file"
+authors = [{ name = "Leo Mustatea, Yopeso", email = "49692509+leonardmustatea@users.noreply.github.com" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+# The oldest Python the recorder test runs it on.
+requires-python = ">=3.9"
+# Standard library only, because a suite may run under a Python it cannot install into.
+dependencies = []
+
+[tool.setuptools]
+packages = ["q6_report"]

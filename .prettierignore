@@ -1,0 +1,4 @@
+# The docs keep one sentence per line and hand-laid tables, which Prettier would re-pad.
+*.md
+# pnpm writes it.
+pnpm-lock.yaml

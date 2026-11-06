@@ -1,0 +1,606 @@
+{
+  "workers": 1,
+  "exitCode": 1,
+  "results": [
+    {
+      "test": "Shop::Adds an item",
+      "name": "Adds an item",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'Adds an item'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "When",
+          "text": "I add 1 item",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 1",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "test": "Shop::Calls the other service",
+      "name": "Calls the other service",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Calls the other service'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:67",
+      "kind": "env",
+      "error": "ConnectionRefusedError: [Errno #] Connection refused",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the other service answers",
+          "status": "failed"
+        }
+      ],
+      "category": "env"
+    },
+    {
+      "test": "Shop::Calls the service",
+      "name": "Calls the service",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Calls the service'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:62",
+      "kind": "env",
+      "error": "ConnectionRefusedError: [Errno #] Connection refused",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the service answers",
+          "status": "failed"
+        }
+      ],
+      "category": "env"
+    },
+    {
+      "test": "Shop::Doubles 1 -- @1.1",
+      "name": "Doubles 1 -- @1.1",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@bug:SHOP-1"],
+      "status": "passed",
+      "attempts": 1,
+      "knownBug": "bug:SHOP-1",
+      "rerun": "rerun 'Doubles 1 -- @1.1'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "doubling 1 gives 2",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "test": "Shop::Doubles 3 -- @1.2",
+      "name": "Doubles 3 -- @1.2",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@bug:SHOP-1"],
+      "status": "failed",
+      "attempts": 1,
+      "knownBug": "bug:SHOP-1",
+      "rerun": "rerun 'Doubles 3 -- @1.2'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:89",
+      "kind": "check",
+      "error": "Expected 7 but got 6",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "doubling 3 gives 7",
+          "status": "failed"
+        }
+      ],
+      "category": "known"
+    },
+    {
+      "test": "Shop::Fails in its hook",
+      "name": "Fails in its hook",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@hook_fails"],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Fails in its hook'",
+      "at": "features/environment.py:35",
+      "kind": "error",
+      "error": "RuntimeError: the fixture would not start",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "notRun"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 0",
+          "status": "notRun"
+        }
+      ],
+      "category": "code"
+    },
+    {
+      "test": "Shop::Fails on every attempt",
+      "name": "Fails on every attempt",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@retry", "@shot"],
+      "status": "failed",
+      "attempts": 2,
+      "rerun": "rerun 'Fails on every attempt'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:31",
+      "kind": "check",
+      "error": "Expected 9 items but got 0",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 9",
+          "status": "failed"
+        }
+      ],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Fails with a screenshot",
+      "name": "Fails with a screenshot",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@shot"],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Fails with a screenshot'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:31",
+      "kind": "check",
+      "error": "Expected 9 items but got 0",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 9",
+          "status": "failed"
+        }
+      ],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Finds a missing object",
+      "name": "Finds a missing object",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Finds a missing object'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:47",
+      "kind": "missing",
+      "error": "LookupError: Object not found: Refund",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the object \"Refund\" is there",
+          "status": "failed"
+        }
+      ],
+      "category": "missing"
+    },
+    {
+      "test": "Shop::Has a screenshot on its first attempt only",
+      "name": "Has a screenshot on its first attempt only",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@retry", "@shot_once"],
+      "status": "failed",
+      "attempts": 2,
+      "rerun": "rerun 'Has a screenshot on its first attempt only'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:31",
+      "kind": "check",
+      "error": "Expected 9 items but got 0",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 9",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Has an undefined step",
+      "name": "Has an undefined step",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Has an undefined step'",
+      "failedAt": 1,
+      "kind": "error",
+      "error": "This step has no code: this step has no code",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "this step has no code",
+          "status": "failed"
+        }
+      ],
+      "category": "code"
+    },
+    {
+      "test": "Shop::Is not ready",
+      "name": "Is not ready",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@skip"],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'Is not ready'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "notRun"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 0",
+          "status": "notRun"
+        }
+      ]
+    },
+    {
+      "test": "Shop::Keeps what it attached",
+      "name": "Keeps what it attached",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@video"],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'Keeps what it attached'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "When",
+          "text": "I add 1 item",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the order log is attached",
+          "status": "passed"
+        }
+      ],
+      "attachments": [
+        {
+          "name": "Order log",
+          "content": "1 item, café\n"
+        },
+        {
+          "name": "Execution video",
+          "content": "12 bytes"
+        }
+      ]
+    },
+    {
+      "test": "Shop::Passes on its second attempt",
+      "name": "Passes on its second attempt",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": ["@retry", "@log_each_attempt"],
+      "status": "passed",
+      "attempts": 2,
+      "rerun": "rerun 'Passes on its second attempt'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "it passes the second time",
+          "status": "passed"
+        }
+      ],
+      "attachments": [
+        {
+          "name": "Attempt log",
+          "attempt": 1,
+          "content": "ended failed\n"
+        },
+        {
+          "name": "Attempt log",
+          "attempt": 2,
+          "content": "ended passed\n"
+        }
+      ],
+      "category": "flaky"
+    },
+    {
+      "test": "Shop::Raises a value error",
+      "name": "Raises a value error",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Raises a value error'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:52",
+      "kind": "error",
+      "error": "ValueError: bad quantity",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "a value error is raised",
+          "status": "failed"
+        }
+      ],
+      "category": "code"
+    },
+    {
+      "test": "Shop::Reads a missing key",
+      "name": "Reads a missing key",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Reads a missing key'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:57",
+      "kind": "error",
+      "error": "KeyError: 'total'",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "a missing key is read",
+          "status": "failed"
+        }
+      ],
+      "category": "code"
+    },
+    {
+      "test": "Shop::Says \"it's done\" in café",
+      "name": "Says \"it's done\" in café",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Says \"it'\"'\"'s done\" in café'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:84",
+      "kind": "check",
+      "error": "first line says \"done\"\nsecond line",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the error has two lines",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Totals a line",
+      "name": "Totals a line",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Totals a line'",
+      "failedAt": 2,
+      "at": "features/steps/shop_steps.py:31",
+      "kind": "check",
+      "error": "Expected 8 items but got 7",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "When",
+          "text": "I add 7 item",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the cart holds 8",
+          "status": "failed"
+        },
+        {
+          "keyword": "And",
+          "text": "nothing else runs after it",
+          "status": "notRun"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Totals by helper one",
+      "name": "Totals by helper one",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Totals by helper one'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:9",
+      "kind": "check",
+      "error": "Expected 2 but got 1",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the helper sees 1 and 2",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Totals by helper two",
+      "name": "Totals by helper two",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Totals by helper two'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:9",
+      "kind": "check",
+      "error": "Expected 40 but got 30",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the helper sees 30 and 40",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "Shop::Waits too long",
+      "name": "Waits too long",
+      "group": "Shop",
+      "file": "features/shop.feature",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'Waits too long'",
+      "failedAt": 1,
+      "at": "features/steps/shop_steps.py:72",
+      "kind": "timeout",
+      "error": "TimeoutError: no window after 20 seconds",
+      "steps": [
+        {
+          "keyword": "Given",
+          "text": "the shop is open",
+          "status": "passed"
+        },
+        {
+          "keyword": "Then",
+          "text": "the wait times out",
+          "status": "failed"
+        }
+      ],
+      "category": "timeout"
+    }
+  ],
+  "causes": [
+    ["Calls the other service", "Calls the service"],
+    ["Doubles 3 -- @1.2"],
+    ["Fails in its hook"],
+    ["Fails on every attempt", "Fails with a screenshot", "Has a screenshot on its first attempt only", "Totals a line"],
+    ["Finds a missing object"],
+    ["Has an undefined step"],
+    ["Raises a value error"],
+    ["Reads a missing key"],
+    ["Says \"it's done\" in café"],
+    ["Totals by helper one", "Totals by helper two"],
+    ["Waits too long"]
+  ]
+}

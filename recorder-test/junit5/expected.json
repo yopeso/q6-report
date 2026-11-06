@@ -1,0 +1,584 @@
+{
+  "workers": 2,
+  "exitCode": 1,
+  "results": [
+    {
+      "test": "AttachTest::keeps what it attached",
+      "name": "keeps what it attached",
+      "group": "AttachTest",
+      "file": "AttachTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'keeps what it attached'",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "order.log",
+          "content": "1 item, café\n"
+        },
+        {
+          "name": "Execution video",
+          "content": "12 bytes"
+        }
+      ]
+    },
+    {
+      "test": "AttachTest::passes on its second attempt with a log of each",
+      "name": "passes on its second attempt with a log of each",
+      "group": "AttachTest",
+      "file": "AttachTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 2,
+      "rerun": "rerun 'passes on its second attempt with a log of each'",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "Attempt log",
+          "attempt": 1,
+          "content": "attempt 1\n"
+        },
+        {
+          "name": "Attempt log",
+          "attempt": 2,
+          "content": "attempt 2\n"
+        }
+      ],
+      "category": "flaky"
+    },
+    {
+      "test": "CartTest::adds an item",
+      "name": "adds an item",
+      "group": "CartTest",
+      "file": "CartTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'adds an item'",
+      "steps": []
+    },
+    {
+      "test": "CartTest::cannot run here",
+      "name": "cannot run here",
+      "group": "CartTest",
+      "file": "CartTest",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'cannot run here'",
+      "steps": []
+    },
+    {
+      "test": "CartTest::says \"it's done\" in café",
+      "name": "says \"it's done\" in café",
+      "group": "CartTest",
+      "file": "CartTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'says \"it'\\''s done\" in café'",
+      "at": "CartTest.kt:15",
+      "kind": "check",
+      "error": "first line says \"done\"\nsecond line",
+      "steps": [],
+      "category": "wrong"
+    },
+    {
+      "test": "CheckoutTest::pays for the order",
+      "name": "pays for the order",
+      "group": "CheckoutTest",
+      "file": "CheckoutTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'pays for the order'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "Open the checkout",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "Pay 7 euro",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "See the receipt",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "test": "CheckoutTest::totals the checkout",
+      "name": "totals the checkout",
+      "group": "CheckoutTest",
+      "file": "CheckoutTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'totals the checkout'",
+      "failedAt": 1,
+      "at": "CheckoutTest.kt:13",
+      "kind": "check",
+      "error": "expected: <8> but was: <7>",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "Open the checkout",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "See a total of 8",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "NoSetupTest::NoSetupTest",
+      "name": "NoSetupTest",
+      "group": "NoSetupTest",
+      "file": "NoSetupTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'NoSetupTest'",
+      "at": "NoSetupTest.kt:11",
+      "kind": "error",
+      "error": "IllegalStateException: the fixture would not start",
+      "steps": [],
+      "category": "code"
+    },
+    {
+      "test": "NotReadyTest::NotReadyTest",
+      "name": "NotReadyTest",
+      "group": "NotReadyTest",
+      "file": "NotReadyTest",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'NotReadyTest'",
+      "steps": []
+    },
+    {
+      "test": "RetryTest::cannot run here",
+      "name": "cannot run here",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'cannot run here'",
+      "steps": []
+    },
+    {
+      "test": "RetryTest::fails every attempt",
+      "name": "fails every attempt",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 3,
+      "rerun": "rerun 'fails every attempt'",
+      "at": "RetryTest.kt:34",
+      "kind": "check",
+      "error": "never adds up ==> expected: <1> but was: <2>",
+      "steps": [],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "RetryTest::is turned off",
+      "name": "is turned off",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'is turned off'",
+      "steps": []
+    },
+    {
+      "test": "RetryTest::passes first time",
+      "name": "passes first time",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'passes first time'",
+      "steps": []
+    },
+    {
+      "test": "RetryTest::passes on the second attempt",
+      "name": "passes on the second attempt",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 2,
+      "rerun": "rerun 'passes on the second attempt'",
+      "steps": [],
+      "category": "flaky"
+    },
+    {
+      "test": "RetryTest::throws every attempt",
+      "name": "throws every attempt",
+      "group": "RetryTest",
+      "file": "RetryTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 3,
+      "rerun": "rerun 'throws every attempt'",
+      "at": "RetryTest.kt:38",
+      "kind": "error",
+      "error": "IllegalStateException: the cart is gone",
+      "steps": [],
+      "image": true,
+      "category": "code"
+    },
+    {
+      "test": "ShopTest::charges twice",
+      "name": "charges twice",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": ["@bug:SHOP-1"],
+      "status": "failed",
+      "attempts": 1,
+      "knownBug": "bug:SHOP-1",
+      "rerun": "rerun 'charges twice'",
+      "at": "ShopTest.kt:128",
+      "kind": "check",
+      "error": "charged 2 times",
+      "steps": [],
+      "image": true,
+      "category": "known"
+    },
+    {
+      "test": "ShopTest::doubles::[1] 1, 2",
+      "name": "[1] 1, 2",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun '[1] 1, 2'",
+      "steps": []
+    },
+    {
+      "test": "ShopTest::doubles::[2] 3, 7",
+      "name": "[2] 3, 7",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun '[2] 3, 7'",
+      "at": "ShopTest.kt:133",
+      "kind": "check",
+      "error": "expected: <7> but was: <6>",
+      "steps": [],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "ShopTest::empties a list that is empty",
+      "name": "empties a list that is empty",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'empties a list that is empty'",
+      "at": "ShopTest.kt:105",
+      "kind": "error",
+      "error": "NoSuchElementException",
+      "steps": [],
+      "image": true,
+      "category": "code"
+    },
+    {
+      "test": "ShopTest::finds a missing button",
+      "name": "finds a missing button",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'finds a missing button'",
+      "at": "ShopTest.kt:67",
+      "kind": "missing",
+      "error": "NoSuchElementException: no such element: Unable to locate element: {\"method\":\"css selector\",\"selector\":\"#refund\"}",
+      "steps": [],
+      "image": true,
+      "category": "missing"
+    },
+    {
+      "test": "ShopTest::is not ready",
+      "name": "is not ready",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'is not ready'",
+      "steps": []
+    },
+    {
+      "test": "ShopTest::keeps looking for a missing button",
+      "name": "keeps looking for a missing button",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'keeps looking for a missing button'",
+      "at": "ShopTest.kt:79",
+      "kind": "missing",
+      "error": "TimeoutException: Expected condition failed: waiting for the refund button (tried for 0 second(s) with 500 milliseconds interval)",
+      "steps": [],
+      "image": true,
+      "category": "missing"
+    },
+    {
+      "test": "ShopTest::opens a file that is not there",
+      "name": "opens a file that is not there",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'opens a file that is not there'",
+      "at": "ShopTest.kt:110",
+      "kind": "error",
+      "error": "FileNotFoundException: /nowhere/q6-report/fixture.csv (No such file or directory)",
+      "steps": [],
+      "image": true,
+      "category": "code"
+    },
+    {
+      "test": "ShopTest::reaches the server",
+      "name": "reaches the server",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'reaches the server'",
+      "at": "ShopTest.kt:92",
+      "kind": "env",
+      "error": "WebDriverException: unknown error: net::ERR_CONNECTION_REFUSED",
+      "steps": [],
+      "image": true,
+      "category": "env"
+    },
+    {
+      "test": "ShopTest::reads a missing field",
+      "name": "reads a missing field",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'reads a missing field'",
+      "at": "ShopTest.kt:99",
+      "kind": "error",
+      "error": "NullPointerException",
+      "steps": [],
+      "image": true,
+      "category": "code"
+    },
+    {
+      "test": "ShopTest::shows the shop",
+      "name": "shows the shop",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'shows the shop'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the page",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "see the heading",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "test": "ShopTest::totals by helper one",
+      "name": "totals by helper one",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'totals by helper one'",
+      "at": "ShopTest.kt:50",
+      "kind": "check",
+      "error": "expected: <2> but was: <1>",
+      "steps": [],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "ShopTest::totals by helper two",
+      "name": "totals by helper two",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": ["@BL-030"],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'totals by helper two'",
+      "at": "ShopTest.kt:50",
+      "kind": "check",
+      "error": "expected: <40> but was: <30>",
+      "steps": [],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "ShopTest::totals the order",
+      "name": "totals the order",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'totals the order'",
+      "failedAt": 1,
+      "at": "ShopTest.kt:61",
+      "kind": "check",
+      "error": "expected: <Total 8> but was: <Total 7>",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the page",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "see the total",
+          "status": "failed"
+        }
+      ],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "test": "ShopTest::waits for a missing button",
+      "name": "waits for a missing button",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'waits for a missing button'",
+      "at": "ShopTest.kt:73",
+      "kind": "timeout",
+      "error": "TimeoutException: Expected condition failed: waiting for visibility of element located by By.id: refund (tried for 0 second(s) with 500 milliseconds interval)",
+      "steps": [],
+      "image": true,
+      "category": "timeout"
+    },
+    {
+      "test": "ShopTest::waits for a page that never changes",
+      "name": "waits for a page that never changes",
+      "group": "ShopTest",
+      "file": "ShopTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'waits for a page that never changes'",
+      "at": "ShopTest.kt:85",
+      "kind": "timeout",
+      "error": "TimeoutException: Expected condition failed: waiting for title to be \"Paid\". Current title: \"Shop\" (tried for 0 second(s) with 500 milliseconds interval)",
+      "steps": [],
+      "image": true,
+      "category": "timeout"
+    },
+    {
+      "test": "StepAnnotationTest::fills the basket",
+      "name": "fills the basket",
+      "group": "StepAnnotationTest",
+      "file": "StepAnnotationTest",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'fills the basket'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "Add 2 items",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "Check the basket holds 2",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "empty",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "test": "StepAnnotationTest::totals the basket",
+      "name": "totals the basket",
+      "group": "StepAnnotationTest",
+      "file": "StepAnnotationTest",
+      "tags": [],
+      "status": "failed",
+      "attempts": 1,
+      "rerun": "rerun 'totals the basket'",
+      "failedAt": 1,
+      "at": "StepAnnotationTest.kt:23",
+      "kind": "check",
+      "error": "expected: <15> but was: <14>",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "Open the basket",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "Check the total is 15 euro",
+          "status": "failed"
+        }
+      ],
+      "category": "wrong"
+    }
+  ],
+  "causes": [
+    ["[2] 3, 7"],
+    ["charges twice"],
+    ["empties a list that is empty"],
+    ["fails every attempt"],
+    ["finds a missing button"],
+    ["keeps looking for a missing button"],
+    ["NoSetupTest"],
+    ["opens a file that is not there"],
+    ["reaches the server"],
+    ["reads a missing field"],
+    ["says \"it's done\" in café"],
+    ["throws every attempt"],
+    ["totals by helper one", "totals by helper two"],
+    ["totals the basket"],
+    ["totals the checkout"],
+    ["totals the order"],
+    ["waits for a missing button"],
+    ["waits for a page that never changes"]
+  ]
+}

@@ -1,0 +1,72 @@
+# Every check, on every pull request and every push to main.
+# Each check runs even when one before it failed, so one run shows every failure.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes the run before it moot.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned by commit, because a tag can be moved to other code; the comment names the release.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The pnpm version comes from packageManager in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # --frozen-lockfile fails when package.json asks for something the lockfile does not hold.
+      - name: Install
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      # The quoting test runs each command a person copies through sh, bash and zsh, and the runner has no zsh.
+      - name: Install zsh
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends zsh
+
+      - name: Typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm typecheck
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm lint
+
+      - name: Formatting
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm format:check
+
+      - name: Unit tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm test
+
+      # The names come from a secret, which a pull request from a fork does not receive, so the check says so there.
+      - name: Every file names nothing but q6-report
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          Q6_REPORT_PRIVATE_NAMES: ${{ secrets.Q6_REPORT_PRIVATE_NAMES }}
+        run: pnpm check:names
+
+      - name: The report page draws every page, from a file, in Chrome
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm check:report
+
+      # Python 3 and a JDK come with the runner; the recorder test makes its own venv and uses the recorders' Gradle wrapper.
+      - name: Each recorder writes exactly what a suite with known outcomes must produce
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm check:recorders

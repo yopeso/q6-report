@@ -1,0 +1,5 @@
+# The recorder reads behave's model objects, which promise no stable interface, so this is the version it is proven on.
+behave==1.3.3
+# Builds the recorder's wheel without build isolation, so the check needs no network after its first run. It has to be
+# 77 or newer, which reads the licence as an SPDX expression, and is pinned so every machine builds the same wheel.
+setuptools==82.0.1
