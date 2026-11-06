@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-  testImplementation("io.github.yopeso:q6-report-junit5:0.0.0")
+  testImplementation("io.github.yopeso:q6-report-junit5:0.1.0")
   testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
   testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")

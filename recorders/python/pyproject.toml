@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q6-report"
-version = "0.0.0"
+version = "0.1.0"
 description = "Recorders that write a test run for q6-report, a test report with history that opens from one file"
 authors = [{ name = "Leo Mustatea, Yopeso", email = "49692509+leonardmustatea@users.noreply.github.com" }]
 license = "Apache-2.0"
