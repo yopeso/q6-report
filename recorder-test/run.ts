@@ -15,7 +15,6 @@ import type { ReportData } from '../src/model.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.dirname(here);
-const repoRoot = path.resolve(packageDir, '../..');
 const PROJECT = 'shop';
 const PNG_START = Buffer.from('\x89PNG', 'latin1');
 
@@ -66,12 +65,24 @@ function need(ok: boolean, what: string, fix: string): void {
   if (!ok) throw new Error(`${what} ${fix}`);
 }
 
-const cacheDir = path.join(repoRoot, 'node_modules', '.cache', 'q6-report-recorders');
+const cacheDir = path.join(packageDir, 'node_modules', '.cache', 'q6-report-recorders');
 const venvPython = path.join(cacheDir, 'behave-venv', 'bin', 'python');
 const recordersPython = path.join(packageDir, 'recorders', 'python');
 const recordersJunit5 = path.join(packageDir, 'recorders', 'junit5');
 const gradlew = path.join(recordersJunit5, 'gradlew');
 const licence = readFileSync(path.join(packageDir, 'LICENSE'));
+// A release's version, which the release workflow sets so each part comes from its registry, as a team installs it.
+const published = process.env.Q6_REPORT_FROM_REGISTRY;
+
+/** Tries an install again while it fails, as a registry can take minutes to serve a version it has just taken. */
+function installWithRetries(what: string, install: () => { code: number; output: string }): void {
+  for (let attempt = 1; ; attempt++) {
+    const got = install();
+    if (got.code === 0) return;
+    assert.ok(attempt < 10, `${what} never installed:\n${got.output}`);
+    spawnSync('sleep', ['30']);
+  }
+}
 
 // Compiled files would sit beside the recorder, and Python trusts one whose source has the same size and second.
 const NO_BYTECODE = { PYTHONDONTWRITEBYTECODE: '1' };
@@ -79,12 +90,12 @@ const NO_BYTECODE = { PYTHONDONTWRITEBYTECODE: '1' };
 const behave: Suite = {
   name: 'behave',
   dir: path.join(here, 'behave'),
-  builtAs: 'wheel',
+  builtAs: published ? 'release on PyPI' : 'wheel',
   prepare() {
     need(spawnSync('python3', ['--version']).status === 0, 'python3 is missing, and the behave recorder runs on it.', 'Install Python 3.');
     if (!existsSync(venvPython)) {
       mkdirSync(cacheDir, { recursive: true });
-      const made = run('python3', ['-m', 'venv', path.dirname(path.dirname(venvPython))], process.env, repoRoot);
+      const made = run('python3', ['-m', 'venv', path.dirname(path.dirname(venvPython))], process.env, packageDir);
       need(made.code === 0, `Could not make a virtual environment: ${made.output}`, 'Install the venv module of Python 3.');
     }
     const installed = run(venvPython, ['-m', 'pip', 'install', '--quiet', '-r', 'requirements.txt'], process.env, this.dir);
@@ -96,6 +107,17 @@ const behave: Suite = {
       recordersPython,
     );
     assert.equal(kit.code, 0, `The Python kit's own tests failed:\n${kit.output}`);
+    if (published) {
+      installWithRetries(`q6-report ${published} from PyPI`, () =>
+        run(
+          venvPython,
+          ['-m', 'pip', 'install', '--quiet', '--no-deps', '--force-reinstall', '--no-cache-dir', `q6-report==${published}`],
+          process.env,
+          packageDir,
+        ),
+      );
+      return;
+    }
 
     // Without build isolation, so the setuptools pinned in requirements.txt builds it, with no network after the first run.
     const wheels = path.join(cacheDir, 'wheel');
@@ -104,7 +126,7 @@ const behave: Suite = {
       venvPython,
       ['-m', 'pip', 'wheel', '--quiet', '--no-deps', '--no-build-isolation', '-w', wheels, recordersPython],
       process.env,
-      repoRoot,
+      packageDir,
     );
     assert.equal(wheel.code, 0, `Building the wheel failed:\n${wheel.output}`);
     const [built] = readdirSync(wheels).filter((file) => file.endsWith('.whl'));
@@ -120,7 +142,7 @@ const behave: Suite = {
         `${distInfo}/licenses/LICENSE`,
       ],
       process.env,
-      repoRoot,
+      packageDir,
     );
     assert.equal(shipped.code, 0, `The wheel carries no licence:\n${shipped.output}`);
     assert.ok(Buffer.from(shipped.output).equals(licence), "The wheel's licence is the package's licence");
@@ -128,7 +150,7 @@ const behave: Suite = {
       venvPython,
       ['-m', 'pip', 'install', '--quiet', '--no-deps', '--force-reinstall', path.join(wheels, built)],
       process.env,
-      repoRoot,
+      packageDir,
     );
     assert.equal(reinstalled.code, 0, `Installing the wheel failed:\n${reinstalled.output}`);
   },
@@ -179,36 +201,44 @@ function runSuite(suite: Suite, reportDir: string, selection: 'all' | 'passing' 
 }
 
 /**
- * Packs the npm package and installs it into an empty folder outside this workspace, as a team's CI would, and returns
- * its q6-report command. The folder has a package.json of its own, or npm would climb to the nearest one and install there.
+ * Installs the npm package, packed from here or in a release taken from npm, into an empty folder outside this workspace,
+ * as a team's CI would, and returns its q6-report command. The folder has a package.json of its own, or npm would climb
+ * to the nearest one and install there.
  */
 function installReport(folder: string): string {
-  const packed = path.join(folder, 'packed');
   const installed = path.join(folder, 'installed');
   mkdirSync(installed, { recursive: true });
-  const pack = run('pnpm', ['pack', '--pack-destination', packed], process.env, packageDir);
-  assert.equal(pack.code, 0, `Packing the npm package failed:\n${pack.output}`);
-  const [tarball] = readdirSync(packed).filter((file) => file.endsWith('.tgz'));
-  assert.ok(tarball, `pnpm pack wrote no tarball:\n${pack.output}`);
   writeFileSync(path.join(installed, 'package.json'), '{ "private": true, "type": "module" }\n');
   // pnpm's own settings, passed down as npm_ variables, would change how npm installs.
   const npmEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^npm_/i.test(name)));
-  // Publishing corrects a manifest an install takes as it is, e.g: it drops a bin path written with a leading ./. It does
-  // so only from a package's folder, as a publish from the folder does, and never for a tarball handed to it, so the
-  // tarball is unpacked and published from there, as a dry run, to a registry that does not exist and is never retried.
-  const unpacked = path.join(folder, 'unpacked');
-  mkdirSync(unpacked, { recursive: true });
-  const untar = run('tar', ['-xzf', path.join(packed, tarball), '-C', unpacked], process.env, folder);
-  assert.equal(untar.code, 0, `Unpacking the tarball failed:\n${untar.output}`);
-  const dryRun = ['publish', '--dry-run', '--registry', 'http://127.0.0.1:9', '--fetch-retries', '0', '--fetch-timeout', '2000'];
-  const publish = run('npm', dryRun, npmEnv, path.join(unpacked, 'package'));
-  assert.doesNotMatch(
-    publish.output,
-    /auto-corrected|errors corrected|invalid and removed/,
-    `Publishing would change the manifest:\n${publish.output}`,
-  );
-  const install = run('npm', ['install', '--no-package-lock', '--no-audit', '--no-fund', path.join(packed, tarball)], npmEnv, installed);
-  assert.equal(install.code, 0, `Installing the tarball failed:\n${install.output}`);
+  const npmInstall = ['install', '--no-package-lock', '--no-audit', '--no-fund'];
+  if (published) {
+    // npm keeps a package's list of versions for minutes once fetched, so each try asks the registry again.
+    const fromNpm = [...npmInstall, '--prefer-online', `q6-report@${published}`];
+    installWithRetries(`q6-report ${published} from npm`, () => run('npm', fromNpm, npmEnv, installed));
+  } else {
+    const packed = path.join(folder, 'packed');
+    const pack = run('pnpm', ['pack', '--pack-destination', packed], process.env, packageDir);
+    assert.equal(pack.code, 0, `Packing the npm package failed:\n${pack.output}`);
+    const [tarball] = readdirSync(packed).filter((file) => file.endsWith('.tgz'));
+    assert.ok(tarball, `pnpm pack wrote no tarball:\n${pack.output}`);
+    // Publishing corrects a manifest an install takes as it is, e.g: it drops a bin path written with a leading ./. It does
+    // so only from a package's folder, as a publish from the folder does, and never for a tarball handed to it, so the
+    // tarball is unpacked and published from there, as a dry run, to a registry that does not exist and is never retried.
+    const unpacked = path.join(folder, 'unpacked');
+    mkdirSync(unpacked, { recursive: true });
+    const untar = run('tar', ['-xzf', path.join(packed, tarball), '-C', unpacked], process.env, folder);
+    assert.equal(untar.code, 0, `Unpacking the tarball failed:\n${untar.output}`);
+    const dryRun = ['publish', '--dry-run', '--registry', 'http://127.0.0.1:9', '--fetch-retries', '0', '--fetch-timeout', '2000'];
+    const publish = run('npm', dryRun, npmEnv, path.join(unpacked, 'package'));
+    assert.doesNotMatch(
+      publish.output,
+      /auto-corrected|errors corrected|invalid and removed/,
+      `Publishing would change the manifest:\n${publish.output}`,
+    );
+    const install = run('npm', [...npmInstall, path.join(packed, tarball)], npmEnv, installed);
+    assert.equal(install.code, 0, `Installing the tarball failed:\n${install.output}`);
+  }
   assert.ok(!existsSync(path.join(installed, 'node_modules', 'esbuild')), 'The package installs with no esbuild');
   checkTypesAsInstalled(installed);
   return path.join(installed, 'node_modules', '.bin', 'q6-report');
@@ -473,13 +503,24 @@ async function main(): Promise<number> {
     console.error(`Recorders: ${SUITES.map((suite) => suite.name).join(', ')}`);
     return 2;
   }
+  if (published !== undefined && !/^\d+\.\d+\.\d+$/.test(published)) {
+    console.error(`Q6_REPORT_FROM_REGISTRY is "${published}", and it has to be a published version of three numbers, e.g: 0.1.0.`);
+    return 2;
+  }
   const npmFolder = mkdtempSync(path.join(os.tmpdir(), 'q6-report-npm-'));
   try {
     console.log('npm package');
     try {
       reportCommand = installReport(npmFolder);
-      console.log('  ok: packed, and installed from its tarball with no esbuild; every page below is written by its q6-report command');
-      console.log('  ok: publishing would change nothing in its manifest, and a project importing it type-checks against its types');
+      if (published) {
+        console.log(
+          `  ok: q6-report ${published}, installed from npm with no esbuild; every page below is written by its q6-report command`,
+        );
+        console.log('  ok: a project importing it type-checks against its types');
+      } else {
+        console.log('  ok: packed, and installed from its tarball with no esbuild; every page below is written by its q6-report command');
+        console.log('  ok: publishing would change nothing in its manifest, and a project importing it type-checks against its types');
+      }
     } catch (error) {
       console.error(`  FAILED: ${error instanceof Error ? error.message : String(error)}`);
       return 1;

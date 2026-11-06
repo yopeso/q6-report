@@ -1,0 +1,120 @@
+# A tag v<version> releases that version: every check runs, the packages are built, and once a maintainer approves the
+# release environment they go to npm and PyPI, then come back from there into the recorder test.
+# Maven Central joins once its Portal token and signing key are kept as secrets of the release environment.
+# No job reads a cache, which another run could have written, and no checkout keeps its credentials, as no step pushes.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    secrets:
+      Q6_REPORT_PRIVATE_NAMES: ${{ secrets.Q6_REPORT_PRIVATE_NAMES }}
+
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned by commit, because a tag can be moved to other code; the comment names the release.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+
+      - name: The tag is the version every part carries
+        run: node scripts/version.mjs check "${GITHUB_REF_NAME#v}"
+
+      # pnpm pack writes the manifest a registry serves, from publishConfig. The wheel builds as the recorder test builds
+      # it, with the setuptools pinned in its requirements.txt, so the published wheel comes from the tested build.
+      - name: Build the npm package and the wheel
+        run: |
+          pnpm pack --pack-destination out/npm
+          python3 -m venv "$RUNNER_TEMP/wheel-venv"
+          "$RUNNER_TEMP/wheel-venv/bin/pip" install --quiet -r recorder-test/behave/requirements.txt
+          "$RUNNER_TEMP/wheel-venv/bin/pip" wheel --quiet --no-deps --no-build-isolation -w out/pypi recorders/python
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: out/
+          if-no-files-found: error
+
+  npm:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    # npm takes the release through trusted publishing, from this workflow's identity, so no token is kept.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: out/
+      # A version already on npm stays as it is, e.g: the first one, which has to be uploaded by hand. An npm older than
+      # 11.5.1 has no trusted publishing, and would fail asking for a token.
+      - name: Publish to npm, unless the version is already there
+        run: |
+          npm_version="$(npm --version)"
+          if [ "$(printf '%s\n' 11.5.1 "$npm_version" | sort -V | head -n 1)" != 11.5.1 ]; then
+            echo "npm $npm_version has no trusted publishing, which needs 11.5.1 or newer; raise node-version above" >&2
+            exit 1
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          if npm view "q6-report@$version" version > /dev/null 2>&1; then
+            echo "q6-report $version is already on npm, and a published version is never replaced"
+          else
+            npm publish "out/npm/q6-report-$version.tgz" --access public
+          fi
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    # PyPI takes the release through trusted publishing, from this workflow's identity, so no token is kept.
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: out/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: out/pypi/
+
+  installed:
+    needs: [npm, pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      # The recorder test on what a team downloads: the command from npm and the behave recorder from PyPI.
+      - name: Each recorder writes exactly what it must, from the packages just published
+        env:
+          Q6_REPORT_FROM_REGISTRY: ${{ github.ref_name }}
+        run: Q6_REPORT_FROM_REGISTRY="${Q6_REPORT_FROM_REGISTRY#v}" pnpm check:recorders
