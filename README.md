@@ -5,7 +5,7 @@ A recorder inside a test suite writes each test's result as it runs, and the `q6
 The page opens from the file in a browser, so it can be mailed or kept as a CI artifact as it is.
 
 Recorders for behave and JUnit 5 are here, and a suite on any other framework writes the same lines itself.
-Version 0.1.0 is not published yet, so until it is, each part installs from what it builds, as below.
+The `q6-report` command installs from npm and the behave recorder from PyPI; the JUnit 5 recorder is not on Maven Central yet, so it installs from what this repository builds, as below.
 It is licensed under Apache-2.0, in `LICENSE`, and written by Leo Mustatea, Yopeso.
 
 ## What the page shows
@@ -41,7 +41,7 @@ Each builds into what its registry serves, and `pnpm check:recorders` installs e
 | PyPI `q6-report` | the behave recorder, standard library only | `python3 -m pip wheel --no-deps` on `recorders/python` | a `.whl` |
 | Maven Central `io.github.yopeso:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
 
-Every version stays `0.0.0` until the first release, under [Releasing](#releasing).
+All three carry one version, the last release's, which [Releasing](#releasing) sets.
 `recorders/python/LICENSE` is a copy of `LICENSE`, because a wheel can only carry a file from its own folder, and the recorder test fails if the wheel's copy differs.
 Maven Central verified the group `io.github.yopeso` to Yopeso through its GitHub organisation.
 
@@ -58,13 +58,15 @@ A recording that breaks never decides a test: the suite's exit code stays its ow
 
 ### behave
 
-Until the package is on PyPI, a suite installs its wheel, and one line in `behave.ini` turns the recorder on.
+A suite installs the recorder from PyPI, beside behave, and one line in `behave.ini` turns it on.
 
 ```text
-$ python3 -m pip wheel --no-deps -w wheels recorders/python
-...
-Successfully built q6-report
-$ pip install wheels/q6_report-0.0.0-py3-none-any.whl
+$ pip install q6-report==0.1.0
+Collecting q6-report==0.1.0
+  Downloading q6_report-0.1.0-py3-none-any.whl.metadata (348 bytes)
+Downloading q6_report-0.1.0-py3-none-any.whl (11 kB)
+Installing collected packages: q6-report
+Successfully installed q6-report-0.1.0
 ```
 
 It sits beside any other formatter.
@@ -198,21 +200,12 @@ Every recorder reads the same ones, and none is needed.
 
 The page is built by Node, so a suite in another language finishes in a second command, `q6-report finish`, from the npm package.
 The folder can travel first, e.g: as a CI artifact from a machine with no Node, and each lane's folder under it joins one run.
-Until the package is on npm, a suite installs its tarball.
-
-In this repository:
+A suite installs it from npm, and finishes in its own folder after a run:
 
 ```text
-$ pnpm pack --pack-destination packed
-...
-/Users/someone/q6-report/packed/q6-report-0.0.0.tgz
-```
+$ npm install q6-report@0.1.0
 
-Then in the suite's folder, after a run:
-
-```text
-$ npm install /Users/someone/q6-report/packed/q6-report-0.0.0.tgz
-added 1 package in 229ms
+added 1 package in 507ms
 $ npx q6-report finish --project shop
 Report: file:///Users/someone/shop/q6-report/report/shop.html
 ```
@@ -384,23 +377,27 @@ A new recorder adds a suite under `recorder-test/` and a line in `recorder-test/
 ## Releasing
 
 A release is a tag, `v` and the version, and the version is three numbers, e.g: `0.1.0`, as npm and PyPI spell a pre-release differently.
-`pnpm set-version 0.1.0` writes it into the four places that carry it, and that change reaches `main` through a pull request like any other:
+`pnpm set-version` writes it into the four places that carry it, and that change reaches `main` through a pull request like any other:
 
 ```bash
-git switch --create release-0.1.0
-pnpm set-version 0.1.0
-git commit --message "Release 0.1.0" -- package.json recorders/python/pyproject.toml recorders/junit5/build.gradle.kts recorder-test/junit5/build.gradle.kts
-git push --set-upstream origin release-0.1.0
+version=0.1.1
+git switch --create "release-$version"
+pnpm set-version "$version"
+git commit --message "Release $version" -- package.json recorders/python/pyproject.toml recorders/junit5/build.gradle.kts recorder-test/junit5/build.gradle.kts
+git push --set-upstream origin "release-$version"
 gh pr create --fill
 ```
 
-Once it is merged, the tag goes on `main` as it is on GitHub:
+Only once that pull request is merged, the tag goes on `main` as it is on GitHub, and the version it carries is read before it is pushed:
 
 ```bash
 git fetch origin
-git tag v0.1.0 origin/main
-git push origin v0.1.0
+git tag "v$version" origin/main
+git show "v$version:package.json" | grep '"version"'
+git push origin "v$version"
 ```
+
+A tag on a commit that carries another version fails the `build` job, before anything is published, and is deleted with `git push origin --delete "refs/tags/v$version"` and `git tag --delete "v$version"`.
 
 The tag starts `.github/workflows/release.yml`:
 
@@ -414,20 +411,19 @@ The tag starts `.github/workflows/release.yml`:
 A published version is never replaced: PyPI refuses a file name once used, and npm unpublishes a new package only within 72 hours, so a fault is fixed by the next version.
 The JUnit 5 recorder joins once Maven Central's Portal token and signing key are kept as secrets of the `release` environment; until then it is built from this repository.
 
-Once, before the first release:
+A release is approved on its run's page, under the banner saying `release` requires an approval, or, where that dialog offers no approval, through GitHub's API, with the run's id and the environment's id that `gh api repos/yopeso/q6-report/actions/runs/<run>/pending_deployments` lists:
+
+```bash
+gh api --method POST repos/yopeso/q6-report/actions/runs/<run>/pending_deployments -F 'environment_ids[]=<environment id>' -f state=approved
+```
+
+What a release relies on, set up once:
 
 | Where | What |
 |---|---|
 | This repository's settings, Environments | the environment `release`, deployable from tags matching `v*` only, with the maintainers who approve a release as its required reviewers |
-| pypi.org, Publishing | a pending trusted publisher: owner `yopeso`, repository `q6-report`, workflow `release.yml`, environment `release` |
-
-npm takes a trusted publisher only for a package it already has, so the first version is published by hand, from the tarball the release run built.
-While the run of `v0.1.0` waits for its approval, a maintainer of the npm package downloads it, publishes it and then approves the run, whose `npm` job finds 0.1.0 there and skips it:
-
-```bash
-gh run download "$(gh run list --workflow release.yml --branch v0.1.0 --limit 1 --json databaseId --jq '.[0].databaseId')" --name packages --dir out
-npm publish out/npm/q6-report-0.1.0.tgz --access public
-```
+| pypi.org, the project's Publishing | the trusted publisher: owner `yopeso`, repository `q6-report`, workflow `release.yml`, environment `release` |
+| npmjs.com | 0.1.0, published by hand from the tarball its release run built, as npm takes a trusted publisher only for a package it already has; publishing needs two-factor on the account, as npm refuses an upload without it |
 
 npm's trusted publisher is created on the day of the next release, and not before, as one that has not published within 2 days expires.
 It allows `npm publish` only when told to, and `npm trust` needs npm 11.15.0 or newer:
