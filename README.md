@@ -19,6 +19,7 @@ It is licensed under Apache-2.0, in `LICENSE`, and written by Leo Mustatea, Yope
 
 A link to any page or result is its address, so it can be shared with the file.
 A run narrowed to some tests is a trial run, with a page and a history of its own, so it never changes what the full runs compare against.
+The report links to that page as Trial runs once a full run is written after one.
 
 | Number | Means |
 |---|---|
@@ -73,6 +74,9 @@ pip installs it into the active environment only, so a project on pip also lists
 A project on Poetry adds it with `poetry add --group dev q6-report`, which writes it into `pyproject.toml` and `poetry.lock`.
 
 It sits beside any other formatter.
+When behave ends on a person's machine, the recorder writes the page with `npx --yes q6-report@<its own version> finish` and behave prints where it is, which needs Node 22 or newer; without Node, it says what writes the page instead.
+A CI finishes once, after every job, as [Finishing a run](#finishing-a-run) says, so there the recorder leaves it.
+A run stopped with Ctrl+C goes to the trial page: the scenario that was running counts as not run, and the ones never started are left out.
 The first formatter has to stay on the `format` line, because behave reads an empty first line as an empty formatter, and `outfiles` pairs with formatters by position, so a formatter that writes a file stays first.
 
 ```ini
@@ -82,7 +86,16 @@ format = pretty
 ```
 
 A rerun of a scenario inside one behave run is one result with its count of attempts, however the suite repeats it, because the recorder counts the times `scenario.run` starts.
-A suite's screenshot helper hands over its file, which goes with that attempt:
+A suite that saves its screenshots as files into one folder names that folder once, and changes no code.
+For each attempt of a scenario, the recorder takes the newest image saved there, in that folder or below it, while the attempt ran:
+
+```ini
+[behave.userdata]
+q6_report.screenshots = screenshots
+```
+
+One behave process at a time saves into that folder, or a scenario could take another process's image.
+A suite with no such folder hands its file over from its screenshot helper instead, and it goes with that attempt:
 
 ```python
 import q6_report
@@ -198,12 +211,13 @@ Every recorder reads the same ones, and none is needed.
 | `Q6_REPORT_LANE` | names the lane, e.g: `chrome` | the framework's name |
 | `Q6_REPORT_BUG_TAG` | a pattern for the tag marking a known bug; its first group is the bug, or the whole match | a tag starting `@bug-` or `@bug:` |
 | `Q6_REPORT_RERUN` | the command that runs a test again, with `{name}` and `{file}` filled in and quoted | the page shows no command |
+| `Q6_REPORT_FINISH` | `off` leaves writing the page to `q6-report finish`, e.g: for a suite that runs several behave processes at once | the behave recorder writes the page when behave ends, except in a CI |
 
 ### Finishing a run
 
 The page is built by Node, so a suite in another language finishes in a second command, `q6-report finish`, from the npm package.
 The folder can travel first, e.g: as a CI artifact from a machine with no Node, and each lane's folder under it joins one run.
-A suite installs it from npm, and finishes in its own folder after a run:
+The behave recorder does this itself on a person's machine, as [behave](#behave) says; any other suite installs it from npm, and finishes in its own folder after a run:
 
 ```text
 $ npm install q6-report@0.1.0
@@ -290,6 +304,8 @@ Fields a framework cannot fill stay unset, and the page hides what depends on th
 | `attachments` | files a test attached, each with its `name`, the `path` its recorder kept it at, the `attempt` that attached it on a test that ran more than once, and once the run is recorded, where the report keeps it as `stored` |
 | `rerun`, `rerunScope` | the command that runs it again, and what else that command runs: a tag, or empty for the whole lane |
 | `laneShort` | the lane's name where space is short, on the run |
+
+A recorder that knows its run was not the whole suite writes what it was instead into `narrowed.txt` in its lane's folder, e.g: the behave recorder after a cancel, and `q6-report finish` records that lane as a trial run unless `Q6_RUN_NARROWED` says otherwise.
 
 A history is at version 2, and a line of any other version is skipped with a warning, costing that run and not the history; the next run writes the file again without it, so a history of only such lines starts again from run 1.
 

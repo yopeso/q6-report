@@ -212,6 +212,9 @@ export async function writeReport(options: {
   if (isDebug) {
     data.isDebug = true;
     if (records.length) data.mainReport = `${folder}.html`;
+  } else if (readDebugHistory(historyDir, project).length) {
+    // A trial run leaves this page as it is, so the tab shows once the next full run writes it.
+    data.trialReport = `${folder}-debug.html`;
   }
   const html = path.join(outDir, `${name}.html`);
   const json = path.join(outDir, `${name}.json`);

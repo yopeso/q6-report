@@ -3,6 +3,8 @@
 It is a formatter, which sits beside any other formatter and sees what they see, in the order behave tells them.
 """
 
+import time
+
 from behave.formatter.base import Formatter
 
 from . import kit
@@ -11,14 +13,25 @@ _FAILED = {"failed", "error", "hook_error", "cleanup_error", "undefined", "pendi
 _FRAMEWORK = "behave"
 
 
+def _was_stopped(item):
+    # Behave raises KeyboardInterrupt into the step running when a person stops the run, which is no failure of the test.
+    return isinstance(getattr(item, "exception", None), KeyboardInterrupt)
+
+
+def _was_cancelled(scenario):
+    return _was_stopped(scenario) or any(_was_stopped(step) for step in scenario.all_steps)
+
+
 def _step_status(step):
     name = step.status.name
     if name == "passed" or name == "pending_warn":
         return "passed"
-    return "failed" if name in _FAILED else "notRun"
+    return "failed" if name in _FAILED and not _was_stopped(step) else "notRun"
 
 
 def _scenario_status(scenario):
+    if _was_cancelled(scenario):
+        return "skipped"
     name = scenario.status.name
     if name in _FAILED:
         return "failed"
@@ -92,6 +105,10 @@ class Recorder(Formatter):
         self.attempts = 0
         self.this_feature = None
         self.recorded = set()
+        self.cancelled = False
+        # A folder the suite saves its screenshots into, named once in behave.ini, so no code of the suite changes.
+        self.screenshots = config.userdata.get("q6_report.screenshots")
+        self.started = time.time()
         kit.collect_attachments(self.folder)
 
     def feature(self, feature):
@@ -102,10 +119,13 @@ class Recorder(Formatter):
         # files stay, as the files of a failed attempt are what tells why a pass on a retry is flaky.
         if scenario is self.current:
             self.attempts += 1
+            self.started = time.time()
             kit.forget_images()
             kit.start_attempt(self.attempts)
             return
+        # The scenario before is finished first, as it looks for its screenshots since its own start.
         self._finish()
+        self.started = time.time()
         # Behave says a scenario started before its before_scenario hook, so only a feature's own hooks get here.
         kit.drop_attachments()
         self.current = scenario
@@ -122,10 +142,16 @@ class Recorder(Formatter):
     def close(self):
         self._finish()
         kit.drop_attachments()
+        if not self.recorded:
+            return
+        if self.cancelled:
+            kit.mark_narrowed(self.folder, "the scenarios that ran before it was cancelled")
+        kit.finish_run()
 
     def _record_unannounced(self):
         # With show_skipped off, behave tells a formatter nothing about a skipped scenario, and it would vanish from the report.
-        if self.this_feature is None:
+        # After a cancel, the scenarios behave never started are left out, as the run goes to the trial page as what ran.
+        if self.this_feature is None or self.cancelled:
             return
         for scenario in self.this_feature.walk_scenarios():
             if id(scenario) not in self.recorded:
@@ -134,10 +160,15 @@ class Recorder(Formatter):
     def _finish(self):
         scenario, self.current = self.current, None
         if scenario is not None:
+            # After the scenario's own after_scenario hook, so a screenshot taken there is found too.
+            saved = kit.newest_image(self.screenshots, self.started) if self.screenshots else None
+            if saved:
+                kit.attach_image(saved)
             self._write(scenario, self.attempts, kit.keep_images(self.folder), kit.take_attachments(self.attempts))
 
     def _write(self, scenario, attempts, image, attachments=None):
         self.recorded.add(id(scenario))
+        self.cancelled = self.cancelled or _was_cancelled(scenario)
         try:
             kit.write_result(self.file, result_of(scenario, attempts, image, attachments))
         except Exception as error:

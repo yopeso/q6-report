@@ -150,6 +150,7 @@ export function chrome(ui: Ui, active: string): HTMLElement {
         model.isDebug ? tab('#/debug', 'Trial runs', 'debug') : null,
         model.isDebug ? null : tab('#/runs', 'Runs', 'runs'),
         model.isDebug ? null : tab('#/tests', 'Tests', 'tests'),
+        model.trialReport ? tab(`./${encodeURIComponent(model.trialReport)}#/debug`, 'Trial runs', 'trial') : null,
       ]),
       h('div', { cls: 'top-right' }, [
         others.length

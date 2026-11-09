@@ -156,6 +156,14 @@ export interface FinishLanesOptions {
   copy?: Partial<Copy>;
 }
 
+/** A lane's file in which its recorder says the run was not the whole suite, and what it was instead, e.g: cancelled. */
+const NARROWED_FILE = 'narrowed.txt';
+
+function laneNarrowedTo(folder: string): string {
+  const file = path.join(folder, NARROWED_FILE);
+  return existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+}
+
 /** Records what recorders left, one run of the report with a lane per folder, for a suite that has no Node inside it. */
 export async function finishLanes(options: FinishLanesOptions = {}): Promise<string> {
   const env = options.env ?? process.env;
@@ -179,6 +187,7 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
   const now = new Date().toISOString();
   let url = '';
   for (const { lane, folder, results, startedAt, finishedAt } of filled) {
+    const narrowedTo = env.Q6_RUN_NARROWED ?? laneNarrowedTo(folder);
     url = await recordRun({
       record: {
         v: HISTORY_VERSION,
@@ -188,8 +197,8 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
         project,
         lane,
         laneLabel: lane,
-        narrowedTo: env.Q6_RUN_NARROWED ?? '',
-        isFull: isFullRun(env, Boolean(env.Q6_RUN_NARROWED)),
+        narrowedTo,
+        isFull: isFullRun(env, Boolean(narrowedTo)),
         startedAt: startedAt ?? now,
         finishedAt: finishedAt ?? now,
         ...(context.commit ? { commit: context.commit } : {}),
