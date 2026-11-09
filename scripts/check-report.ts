@@ -196,8 +196,6 @@ async function main(): Promise<void> {
       writeFileSync(file, samplePng());
     }
   }
-  const written = await writeReport({ historyDir, outDir: path.join(dir, 'report'), project: 'shop', ...shopLook });
-  console.info(`${written.model.runs.length} runs, ${Math.round(written.bytes / 1024)} KB: ${reportUrl(written.html)}`);
   // A session on several tests: one fails then recovers, one keeps failing, one passes throughout, and a later attempt adds a test.
   const newestWeb = records.filter((record) => record.lane === 'web').at(-1)!;
   const failing = newestWeb.results.find((result) => result.status === 'failed')!;
@@ -229,6 +227,9 @@ async function main(): Promise<void> {
       results,
     });
   });
+  // After the trial runs, so the report carries its Trial runs tab at every width checked below.
+  const written = await writeReport({ historyDir, outDir: path.join(dir, 'report'), project: 'shop', ...shopLook });
+  console.info(`${written.model.runs.length} runs, ${Math.round(written.bytes / 1024)} KB: ${reportUrl(written.html)}`);
   const debug = await writeReport({ historyDir, outDir: path.join(dir, 'report'), project: 'shop', isDebug: true, ...shopLook });
 
   for (const day of [0, 1]) for (const lane of ['chrome', 'firefox']) appendRun(historyDir, plainHistory(day, lane));
@@ -297,6 +298,10 @@ async function main(): Promise<void> {
       timeout: 10000,
       timeoutMsg: 'The overview never drew',
     });
+    const trialTab = await browser.execute(
+      () => [...document.querySelectorAll('.nav a')].find((link) => link.textContent === 'Trial runs')?.getAttribute('href') ?? null,
+    );
+    check(trialTab === './shop-debug.html#/debug', `The report's Trial runs tab opens ${trialTab}`);
     for (const theme of ['light', 'dark']) {
       await browser.execute((name: string) => {
         document.documentElement.dataset.theme = name;

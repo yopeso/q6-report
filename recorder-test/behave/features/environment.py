@@ -1,6 +1,7 @@
 import base64
 import os
 import tempfile
+import time
 
 import q6_report
 
@@ -35,22 +36,24 @@ def before_scenario(context, scenario):
         raise RuntimeError("the fixture would not start")
 
 
-def wants_shot(scenario):
-    if "shot" in scenario.effective_tags:
-        return True
-    # A last attempt with no screenshot must not show an earlier attempt's.
-    if "shot_once" in scenario.effective_tags and scenario.name not in shot_once_taken:
-        shot_once_taken.add(scenario.name)
-        return True
-    return False
-
-
 def after_step(context, step):
-    if step.status.name in ("failed", "error") and wants_shot(context.scenario):
+    if step.status.name not in ("failed", "error"):
+        return
+    scenario = context.scenario
+    tags = scenario.effective_tags
+    if "shot" in tags and "retry" not in tags:
+        # Handed over, as a suite's screenshot helper does.
         handle, path = tempfile.mkstemp(suffix=".png")
         with os.fdopen(handle, "wb") as stream:
             stream.write(PNG)
         q6_report.attach_image(path)
+    elif "shot" in tags or ("shot_once" in tags and scenario.name not in shot_once_taken):
+        # Only saved into the folder behave.ini names, as a suite that never calls the recorder does, by the scenarios that
+        # rerun: each attempt's result is the image its own attempt saved, and a last attempt that saved none shows none.
+        shot_once_taken.add(scenario.name)
+        os.makedirs("screenshots", exist_ok=True)
+        with open(os.path.join("screenshots", "{}.png".format(time.time_ns())), "wb") as stream:
+            stream.write(PNG)
 
 
 def attach_written(name, file_name, content):

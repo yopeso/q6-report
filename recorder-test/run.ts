@@ -100,9 +100,11 @@ const behave: Suite = {
     }
     const installed = run(venvPython, ['-m', 'pip', 'install', '--quiet', '-r', 'requirements.txt'], process.env, this.dir);
     need(installed.code === 0, `Could not install behave: ${installed.output}`, 'It comes from PyPI, so this needs a network.');
+    // What the suite saved into its screenshots folder on an earlier run is older than any scenario, and only clutters.
+    rmSync(path.join(this.dir, 'screenshots'), { recursive: true, force: true });
     const kit = run(
       venvPython,
-      ['-m', 'unittest', 'tests.test_kit'],
+      ['-m', 'unittest', 'tests.test_kit', 'tests.test_behave_recorder'],
       { ...process.env, ...NO_BYTECODE, PYTHONPATH: recordersPython },
       recordersPython,
     );
@@ -181,7 +183,8 @@ const behave: Suite = {
     return {
       file: venvPython,
       args: ['-m', 'behave', '--tags=not @skip', ...(selection === 'passing' ? ['--name', 'Adds an item'] : [])],
-      env: NO_BYTECODE,
+      // This test finishes each run itself, with the command it packed, so the recorder must not finish it first.
+      env: { ...NO_BYTECODE, Q6_REPORT_FINISH: 'off' },
     };
   },
   recorderSaid: (output) => output,

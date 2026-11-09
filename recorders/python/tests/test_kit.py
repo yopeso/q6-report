@@ -196,3 +196,70 @@ class AttachTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FinishRunTest(unittest.TestCase):
+    def finish(self, env, npx="/usr/bin/npx", run=None):
+        calls = []
+        said = io.StringIO()
+        with contextlib.redirect_stderr(said):
+            kit.finish_run(env=env, run=run or (lambda args, check: calls.append(args)), which=lambda name: npx, version="1.2.3")
+        return calls, said.getvalue()
+
+    def test_a_persons_machine_finishes_with_the_command_of_the_recorders_own_version(self):
+        calls, _ = self.finish({})
+        self.assertEqual(calls, [["/usr/bin/npx", "--yes", "q6-report@1.2.3", "finish", "--dir", "q6-report"]])
+
+    def test_it_finishes_the_folder_the_recorder_wrote_into(self):
+        calls, _ = self.finish({"Q6_REPORT_DIR": "out/report"})
+        self.assertEqual(calls[0][-2:], ["--dir", "out/report"])
+
+    def test_a_ci_and_the_switch_leave_finishing_to_someone_else(self):
+        for env in ({"CI": "true"}, {"GITLAB_CI": "true"}, {"GITHUB_ACTIONS": "true"}, {"JENKINS_URL": "x"}, {"Q6_REPORT_FINISH": "off"}):
+            self.assertEqual(self.finish(env)[0], [], env)
+
+    def test_without_node_it_says_what_writes_the_page_and_where(self):
+        calls, said = self.finish({}, npx=None)
+        self.assertEqual(calls, [])
+        self.assertIn("npx --yes q6-report@1.2.3 finish --dir q6-report", said)
+
+    def test_a_command_that_cannot_start_raises_nothing(self):
+        def broken(args, check):
+            raise OSError("no such file")
+
+        _, said = self.finish({}, run=broken)
+        self.assertIn("no such file", said)
+
+
+class NarrowedTest(unittest.TestCase):
+    def test_the_lane_says_what_the_run_was_instead_of_the_whole_suite(self):
+        lane = os.path.join(tempfile.mkdtemp(), ".run", "behave")
+        kit.mark_narrowed(lane, "the scenarios that ran before it was cancelled")
+        with open(os.path.join(lane, kit.NARROWED_FILE), encoding="utf-8") as stream:
+            self.assertEqual(stream.read(), "the scenarios that ran before it was cancelled")
+
+
+class NewestImageTest(unittest.TestCase):
+    def saved(self, folder, name, at):
+        path = os.path.join(folder, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as stream:
+            stream.write(b"image")
+        os.utime(path, (at, at))
+        return path
+
+    def test_it_is_the_newest_image_saved_since_the_test_started(self):
+        folder = tempfile.mkdtemp()
+        self.saved(folder, "before.png", 100)
+        self.saved(folder, "first.png", 200)
+        newest = self.saved(folder, os.path.join("step", "second.PNG"), 300)
+        self.saved(folder, "notes.txt", 400)
+        self.assertEqual(kit.newest_image(folder, 150), newest)
+
+    def test_an_image_from_before_the_test_is_not_its_image(self):
+        folder = tempfile.mkdtemp()
+        self.saved(folder, "before.png", 100)
+        self.assertIsNone(kit.newest_image(folder, 150))
+
+    def test_a_folder_that_is_not_there_has_no_image(self):
+        self.assertIsNone(kit.newest_image(os.path.join(tempfile.mkdtemp(), "missing"), 0))

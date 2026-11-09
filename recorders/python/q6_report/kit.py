@@ -4,12 +4,14 @@ Nothing here may raise into a test: a recording that breaks is told about, and t
 """
 
 import contextlib
+import importlib.metadata
 import json
 import os
 import re
 import shlex
 import shutil
 import socket
+import subprocess
 import sys
 import time
 import traceback
@@ -19,6 +21,8 @@ RECORD_VERSION = 2
 MAX_MESSAGE = 2000
 MAX_STACK = 4000
 DEFAULT_DIR = "q6-report"
+# A lane's file that tells q6-report finish the run was not the whole suite, and what it was instead.
+NARROWED_FILE = "narrowed.txt"
 DEFAULT_BUG_TAG = r"^@(bug[-:].+)$"
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -61,6 +65,46 @@ def lane_folder(framework, env=os.environ):
     return os.path.join(base, ".run", _safe_folder_name(env.get("Q6_REPORT_LANE") or framework))
 
 
+def mark_narrowed(folder, what):
+    """Sends this lane's run to the trial page, which keeps it out of the project's history."""
+    try:
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, NARROWED_FILE), "w", encoding="utf-8") as stream:
+            stream.write(what)
+    except Exception as error:
+        warn("The report could not mark this run as {}: {}".format(what, error))
+
+
+def is_ci(env=os.environ):
+    """The variables q6-report finish reads to tell a CI from a person's machine."""
+    return any(env.get(name) for name in ("GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "CI"))
+
+
+def finish_run(env=os.environ, run=subprocess.run, which=shutil.which, version=None):
+    """Writes the page when a suite ends on a person's machine, with the q6-report command of this recorder's own version.
+
+    A CI finishes once, after every job, so it is left to the CI, and Q6_REPORT_FINISH=off leaves it to a person.
+    """
+    if env.get("Q6_REPORT_FINISH") == "off" or is_ci(env):
+        return
+    folder = env.get("Q6_REPORT_DIR") or DEFAULT_DIR
+    try:
+        version = version or importlib.metadata.version("q6-report")
+    except importlib.metadata.PackageNotFoundError:
+        warn("This recorder is not installed as the q6-report package, so `q6-report finish` writes the page.")
+        return
+    arguments = ["--yes", "q6-report@" + version, "finish", "--dir", folder]
+    npx = which("npx")
+    if npx is None:
+        warn("Node is not on this machine, so the page was not written. On one with Node 22 or newer, beside the {} folder: npx {}".format(folder, " ".join(arguments)))
+        return
+    try:
+        # On Windows, npx is npx.cmd, which Windows starts through its own shell.
+        run([npx] + arguments, check=False)
+    except Exception as error:
+        warn("The page could not be written: {}".format(error))
+
+
 def worker_file(folder, framework):
     """A worker's own file, so parallel workers never share one."""
     return os.path.join(folder, "{}-{}.jsonl".format(framework, os.getpid()))
@@ -76,6 +120,26 @@ def write_result(path, result):
             stream.write(json.dumps(line, ensure_ascii=False) + "\n")
     except Exception as error:
         warn('The report could not record "{}": {}'.format(result.get("name"), error))
+
+
+_IMAGE_TYPES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+
+
+def newest_image(folder, since):
+    """The newest image a suite saved under its screenshots folder at or after `since`, a time.time(), or None."""
+    newest = None
+    try:
+        for root, _, names in os.walk(folder):
+            for name in names:
+                if not name.lower().endswith(_IMAGE_TYPES):
+                    continue
+                path = os.path.join(root, name)
+                changed = os.path.getmtime(path)
+                if changed >= since and (newest is None or changed > newest[0]):
+                    newest = (changed, path)
+    except Exception as error:
+        warn("The report could not look for screenshots in {}: {}".format(folder, error))
+    return newest[1] if newest else None
 
 
 def attach_image(path):

@@ -275,6 +275,33 @@ test('Finishing makes one run of every lane the recorders left, and clears them'
   assert.deepEqual(readdirSync(path.join(dir, '.run')), []);
 });
 
+test('A lane its recorder marked as cancelled goes to the trial page, and leaves the history as it was', async () => {
+  const dir = tempDir();
+  writeLane(dir, 'chrome', [passed('a')]);
+  await finishLanes({ dir, project: 'shop', env: {}, cwd: dir });
+  const history = readFileSync(path.join(dir, 'history', 'shop', 'history.jsonl.gz'));
+  writeLane(dir, 'chrome', [passed('a')]);
+  writeFileSync(path.join(dir, '.run', 'chrome', 'narrowed.txt'), 'the scenarios that ran before it was cancelled\n');
+  const url = await finishLanes({ dir, project: 'shop', env: {}, cwd: dir });
+  assert.match(url, /report\/shop-debug\.html$/);
+  assert.deepEqual(readFileSync(path.join(dir, 'history', 'shop', 'history.jsonl.gz')), history);
+  const [trial] = readDebugHistory(path.join(dir, 'history'), 'shop');
+  assert.equal(trial!.narrowedTo, 'the scenarios that ran before it was cancelled');
+  assert.equal(trial!.isFull, false);
+});
+
+test("The report links to the trial runs' page once there are trial runs", async () => {
+  const dir = tempDir();
+  writeLane(dir, 'chrome', [passed('a')]);
+  const first = await finishLanes({ dir, project: 'shop', env: {}, cwd: dir });
+  assert.equal(pageData(new URL(first).pathname).trialReport, undefined);
+  writeLane(dir, 'chrome', [passed('a')]);
+  await finishLanes({ dir, project: 'shop', env: { Q6_RUN_NARROWED: '@smoke' }, cwd: dir });
+  writeLane(dir, 'chrome', [passed('a')]);
+  const next = await finishLanes({ dir, project: 'shop', env: {}, cwd: dir });
+  assert.equal(pageData(new URL(next).pathname).trialReport, 'shop-debug.html');
+});
+
 test('Finishing with nothing recorded says where it looked, and a lane with no results costs nothing', async () => {
   const dir = tempDir();
   await assert.rejects(finishLanes({ dir, project: 'shop', env: {}, cwd: dir }), /No results under .*\.run/);

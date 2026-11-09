@@ -23,12 +23,21 @@ format = pretty
 
 The recorder writes into a `q6-report` folder in the folder behave runs from, or into the folder `Q6_REPORT_DIR` names.
 
-## Write the page
+A failed scenario shows its screenshot when the suite saves its screenshots as files into one folder, named once in `behave.ini`; for each attempt, the recorder takes the newest image saved there while it ran:
 
-The `q6-report` command from npm writes the page from that folder, so this step needs Node 22 or newer, on any machine that has the folder:
-
-```text
-npx --yes q6-report finish --project <project name>
+```ini
+[behave.userdata]
+q6_report.screenshots = screenshots
 ```
+
+A suite with no such folder hands each file over with `q6_report.attach_image(path)` from its screenshot code.
+
+## The page
+
+When behave ends, the recorder writes the page with the `q6-report` command from npm, of its own version, and behave prints where the page is.
+That needs Node 22 or newer on the machine; without it, the recorder says what to run on a machine that has it, beside the folder.
+In a CI, the page is written once, after every job, by `npx --yes q6-report finish`, so there the recorder leaves it.
+
+A run stopped with Ctrl+C goes to a page of trial runs, which the report links to, and leaves the report's history as it was.
 
 Screenshots, attachments, settings and the CI setups are in the [README](https://github.com/yopeso/q6-report#readme).

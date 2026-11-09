@@ -5,6 +5,8 @@ build/
 # What an editor's Java extension builds beside a Gradle project it opens.
 bin/
 __pycache__/
+# What the recorder test's behave suite saves its screenshots into.
+recorder-test/behave/screenshots/
 # What a newer pip leaves beside the recorder when it builds the wheel in place.
 *.egg-info/
 

@@ -133,6 +133,7 @@ export interface TestInfo {
 export interface Model {
   isDebug: boolean;
   mainReport?: string;
+  trialReport?: string;
   project: string;
   projects: string[];
   runs: Run[];
@@ -328,6 +329,7 @@ export function buildModel(data: ReportData): Model {
   return {
     isDebug: Boolean(data.isDebug),
     ...(data.mainReport ? { mainReport: data.mainReport } : {}),
+    ...(data.trialReport ? { trialReport: data.trialReport } : {}),
     project: data.project,
     projects: data.projects,
     runs,

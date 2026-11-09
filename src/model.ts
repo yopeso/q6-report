@@ -117,6 +117,8 @@ export interface ReportData {
   isDebug?: boolean;
   /** The file name of the project's report of full runs, beside a debug page, when it has one. */
   mainReport?: string;
+  /** The file name of the project's page of trial runs, beside its report, when it has one. */
+  trialReport?: string;
   brand?: Partial<Brand>;
   copy?: Partial<Copy>;
 }
