@@ -5,6 +5,9 @@ The recorder writes each scenario's result while behave runs, and the `q6-report
 
 ## Install
 
+From the suite's root, `npx --yes q6-report init` does everything below once, with the tool the project uses, and says what it changed.
+By hand:
+
 Add it beside behave with the tool that keeps your project's dependencies, e.g: Poetry, which writes it into `pyproject.toml`:
 
 ```text
