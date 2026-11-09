@@ -57,9 +57,46 @@ A recording that breaks never decides a test: the suite's exit code stays its ow
 | JUnit 5, from Kotlin or Java | Java 11, with no dependency at run time | `recorders/junit5/` |
 | Any other | the suite's own | it writes [the line](#the-line); a suite on Node uses `writeResult`, `laneFolder` and `keepImage` from the npm package |
 
+### Setting a suite up
+
+`npx --yes q6-report init`, run once from the root of a behave suite, makes every change the suite needs, says each one, and says what it left to a person.
+Running it again changes nothing, and the changes are committed, so nobody else on the team sets anything up.
+
+| It finds | It does |
+|---|---|
+| Poetry: a `poetry.lock` or `[tool.poetry]` | `poetry add --group dev q6-report==<its own version>` |
+| uv: a `uv.lock` | `uv add --dev q6-report==<its own version>` |
+| a `requirements-dev.txt` or `requirements.txt` | adds `q6-report==<its own version>` to it |
+| `behave.ini` or `.behaverc` | adds the recorder as a formatter after the first, which keeps its place and its outfiles |
+| a `screenshots` folder, or one `.gitignore` lists | names it as the folder the recorder takes screenshots from; `--screenshots <folder>` names another |
+| `.gitignore` | adds `q6-report/` |
+| a Gradle build | says the JUnit 5 lines below, as a build script is the team's to change |
+
+A behave configuration in `setup.cfg`, `tox.ini` or `pyproject.toml`, and the CI, stay the team's to change, and it says what they need.
+On a suite on Poetry whose `.gitignore` lists `screenshots/`, besides the dependency Poetry adds, it changed:
+
+```diff
+--- a/.gitignore
++++ b/.gitignore
+@@ -1 +1,3 @@
+ screenshots/
++# What q6-report writes: each run, the history and the page.
++q6-report/
+--- a/behave.ini
++++ b/behave.ini
+@@ -1,3 +1,7 @@
+ [behave]
+ format = pretty
++    q6_report.behave_recorder:Recorder
+ paths = features
++
++[behave.userdata]
++q6_report.screenshots = screenshots
+```
+
 ### behave
 
-A suite installs the recorder from PyPI, beside behave, and one line in `behave.ini` turns it on.
+A suite installs the recorder from PyPI, beside behave, and one line in `behave.ini` turns it on; [`init`](#setting-a-suite-up) does both.
 
 ```text
 $ pip install q6-report==0.1.0
