@@ -69,6 +69,9 @@ Installing collected packages: q6-report
 Successfully installed q6-report-0.1.0
 ```
 
+pip installs it into the active environment only, so a project on pip also lists `q6-report` in its requirements file.
+A project on Poetry adds it with `poetry add --group dev q6-report`, which writes it into `pyproject.toml` and `poetry.lock`.
+
 It sits beside any other formatter.
 The first formatter has to stay on the `format` line, because behave reads an empty first line as an empty formatter, and `outfiles` pairs with formatters by position, so a formatter that writes a file stays first.
 

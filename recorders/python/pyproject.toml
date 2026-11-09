@@ -7,6 +7,8 @@ build-backend = "setuptools.build_meta"
 name = "q6-report"
 version = "0.1.0"
 description = "Recorders that write a test run for q6-report, a test report with history that opens from one file"
+# PyPI's page shows it as the description, and says the author provided none without it.
+readme = "README.md"
 authors = [{ name = "Leo Mustatea, Yopeso", email = "49692509+leonardmustatea@users.noreply.github.com" }]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -14,6 +16,12 @@ license-files = ["LICENSE"]
 requires-python = ">=3.9"
 # Standard library only, because a suite may run under a Python it cannot install into.
 dependencies = []
+
+# The links npm's page shows from package.json.
+[project.urls]
+Homepage = "https://github.com/yopeso/q6-report#readme"
+Source = "https://github.com/yopeso/q6-report"
+Issues = "https://github.com/yopeso/q6-report/issues"
 
 [tool.setuptools]
 packages = ["q6_report"]

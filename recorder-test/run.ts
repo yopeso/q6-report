@@ -146,6 +146,29 @@ const behave: Suite = {
     );
     assert.equal(shipped.code, 0, `The wheel carries no licence:\n${shipped.output}`);
     assert.ok(Buffer.from(shipped.output).equals(licence), "The wheel's licence is the package's licence");
+    // PyPI's page shows the description and links the wheel carries, and says the author provided none when they are missing.
+    // METADATA is in the email header format, so Python's email parser reads it.
+    const metadata = run(
+      venvPython,
+      [
+        '-c',
+        'import email, json, sys, zipfile; m = email.message_from_bytes(zipfile.ZipFile(sys.argv[1]).read(sys.argv[2])); ' +
+          'print(json.dumps({"type": m["Description-Content-Type"], "links": m.get_all("Project-URL") or [], "description": m.get_payload()}))',
+        path.join(wheels, built),
+        `${distInfo}/METADATA`,
+      ],
+      process.env,
+      packageDir,
+    );
+    assert.equal(metadata.code, 0, `The wheel's metadata could not be read:\n${metadata.output}`);
+    const { type, links, description } = JSON.parse(metadata.output) as { type: string | null; links: string[]; description: string };
+    assert.equal(type, 'text/markdown', "The wheel's description is Markdown, as PyPI renders it");
+    assert.equal(
+      description,
+      readFileSync(path.join(recordersPython, 'README.md'), 'utf8'),
+      "The wheel's description is the recorder's README",
+    );
+    assert.ok(links.includes('Source, https://github.com/yopeso/q6-report'), `The wheel links to its source:\n${links.join('\n')}`);
     const reinstalled = run(
       venvPython,
       ['-m', 'pip', 'install', '--quiet', '--no-deps', '--force-reinstall', path.join(wheels, built)],
