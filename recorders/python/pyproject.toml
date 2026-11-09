@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q6-report"
-version = "0.1.0"
+version = "0.1.1"
 description = "Recorders that write a test run for q6-report, a test report with history that opens from one file"
 # PyPI's page shows it as the description, and says the author provided none without it.
 readme = "README.md"
