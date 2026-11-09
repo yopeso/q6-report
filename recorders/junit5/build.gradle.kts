@@ -9,7 +9,7 @@ plugins {
 
 // Maven Central verified this group to Yopeso through its GitHub organisation.
 group = "io.github.yopeso"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories { mavenCentral() }
 
