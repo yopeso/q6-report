@@ -193,19 +193,33 @@ const behave: Suite = {
 const junit5: Suite = {
   name: 'junit5',
   dir: path.join(here, 'junit5'),
-  builtAs: 'Maven publication',
+  builtAs: published ? 'release on Maven Central' : 'Maven publication',
   prepare() {
     const java = spawnSync('java', ['-version'], { encoding: 'utf8' });
     need(java.status === 0 && !java.error, 'A JDK is missing, and the JUnit 5 recorder runs on one.', 'Install JDK 21.');
+    if (published) {
+      // Compiling the tests resolves the recorder; Gradle remembers a missing module, so each try asks Maven Central again.
+      installWithRetries(`q6-report-junit5 ${published} from Maven Central`, () =>
+        run(gradlew, ['testClasses', '--refresh-dependencies', '--no-daemon', '--quiet', '-PfromMavenCentral'], process.env, this.dir),
+      );
+      return;
+    }
     // A publication left from an earlier run must never stand in for this one.
     rmSync(path.join(recordersJunit5, 'build', 'repo'), { recursive: true, force: true });
-    const published = run(gradlew, ['publishAllPublicationsToBuildRepository', '--no-daemon', '--quiet'], process.env, recordersJunit5);
-    assert.equal(published.code, 0, `Publishing the recorder failed:\n${published.output}`);
+    const built = run(gradlew, ['publishAllPublicationsToBuildRepository', '--no-daemon', '--quiet'], process.env, recordersJunit5);
+    assert.equal(built.code, 0, `Publishing the recorder failed:\n${built.output}`);
   },
   command(selection) {
     return {
       file: gradlew,
-      args: ['test', '--rerun', '--no-daemon', '--quiet', ...(selection === 'passing' ? ['--tests', 'CartTest.adds an item'] : [])],
+      args: [
+        'test',
+        '--rerun',
+        '--no-daemon',
+        '--quiet',
+        ...(published ? ['-PfromMavenCentral'] : []),
+        ...(selection === 'passing' ? ['--tests', 'CartTest.adds an item'] : []),
+      ],
       env: {},
     };
   },

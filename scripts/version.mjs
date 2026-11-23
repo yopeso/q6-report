@@ -1,16 +1,19 @@
-// One release is one version in every place that carries it: the npm package, the wheel, the Maven publication and the
-// suite that installs that publication. `set` writes it everywhere; `check` fails where a place says another one.
+// One release is one version in every place that carries it: the npm package, the wheel, the Maven publication, the
+// suite that installs that publication and the README's example of that suite. `set` writes it everywhere; `check` fails
+// where a place says another one.
 import { readFileSync, writeFileSync } from 'node:fs';
+
+const JUNIT5_LINE = {
+  pattern: /^ {2}testImplementation\("io\.github\.qa-automation-q6:q6-report-junit5:([^"]+)"\)$/m,
+  line: (version) => `  testImplementation("io.github.qa-automation-q6:q6-report-junit5:${version}")`,
+};
 
 const PLACES = [
   { file: 'package.json', pattern: /^ {2}"version": "([^"]+)",$/m, line: (version) => `  "version": "${version}",` },
   { file: 'recorders/python/pyproject.toml', pattern: /^version = "([^"]+)"$/m, line: (version) => `version = "${version}"` },
   { file: 'recorders/junit5/build.gradle.kts', pattern: /^version = "([^"]+)"$/m, line: (version) => `version = "${version}"` },
-  {
-    file: 'recorder-test/junit5/build.gradle.kts',
-    pattern: /^ {2}testImplementation\("io\.github\.yopeso:q6-report-junit5:([^"]+)"\)$/m,
-    line: (version) => `  testImplementation("io.github.yopeso:q6-report-junit5:${version}")`,
-  },
+  { file: 'recorder-test/junit5/build.gradle.kts', ...JUNIT5_LINE },
+  { file: 'README.md', ...JUNIT5_LINE },
 ];
 // Three numbers only, e.g: 0.1.0, as npm and PyPI spell a pre-release differently and one spelling has to fit all three.
 const VERSION = /^\d+\.\d+\.\d+$/;
