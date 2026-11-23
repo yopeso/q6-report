@@ -110,10 +110,17 @@ def worker_file(folder, framework):
     return os.path.join(folder, "{}-{}.jsonl".format(framework, os.getpid()))
 
 
-def write_result(path, result):
+def lane_kind(env=os.environ):
+    """A lane's browser and platform as a suite names them, in Q6_REPORT_BROWSER and Q6_REPORT_PLATFORM."""
+    named = {"browser": env.get("Q6_REPORT_BROWSER"), "platform": env.get("Q6_REPORT_PLATFORM")}
+    return {key: value for key, value in named.items() if value}
+
+
+def write_result(path, result, env=os.environ):
     """Adds one line. None is left out, as a field a framework cannot fill stays unset."""
     try:
         line = {"v": RECORD_VERSION, "finishedAt": datetime.now(timezone.utc).isoformat()}
+        line.update(lane_kind(env))
         line.update((key, value) for key, value in result.items() if value is not None)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "a", encoding="utf-8") as stream:

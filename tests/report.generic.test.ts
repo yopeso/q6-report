@@ -400,3 +400,37 @@ test('A lane goes by its short name, its own name without one, and its own name 
   assert.deepEqual(lanes({ lane: 'staging', laneShort: 'Web' }, { lane: 'production', laneShort: 'Web' }), ['staging', 'production']);
   assert.deepEqual(lanes({ lane: 'web', laneShort: 'iOS' }, { lane: 'iOS' }), ['web', 'iOS'], 'A short name can match another lane');
 });
+
+test("A lane is drawn with its browser's logo, else its phone's, and with none when its newest record says neither", () => {
+  const marks = (...runs: Partial<RunRecord>[]) =>
+    modelOf(runs.map((run, i) => aRun(`r${i}`, [aResult('a')], { batch: `b${i}`, ...run }))).lanes.map((lane) => lane.mark);
+  for (const browser of ['chrome', 'edge', 'firefox', 'safari', 'webkit'] as const)
+    assert.deepEqual(marks({ lane: browser, browser, platform: 'web' }), [browser]);
+  assert.deepEqual(marks({ lane: 'p-android', platform: 'android' }, { lane: 'p-ios', platform: 'ios' }), ['android', 'ios']);
+  assert.deepEqual(
+    marks({ lane: 'p-android', platform: 'android', browser: 'chrome' }),
+    ['chrome'],
+    'A browser on a phone is drawn as the browser',
+  );
+  assert.deepEqual(marks({ lane: 'p-web', platform: 'web' }), [undefined], 'A web lane that names no browser is not guessed to be Chrome');
+  assert.deepEqual(
+    marks({ lane: 'chrome' }, { lane: 'firefox' }),
+    [undefined, undefined],
+    'A lane named like a browser, with nothing recorded, has none',
+  );
+  assert.deepEqual(
+    marks({ lane: 'opera', browser: 'opera' as never }, { lane: 'p', platform: 'tv' as never }),
+    [undefined, undefined],
+    'A name the page has no logo for draws none',
+  );
+  assert.deepEqual(
+    marks({ lane: 'shop' }, { lane: 'shop', browser: 'firefox' }),
+    ['firefox'],
+    'A lane recorded before browsers were gets one once it runs again',
+  );
+  assert.deepEqual(
+    marks({ lane: 'shop', browser: 'firefox' }, { lane: 'shop' }),
+    [undefined],
+    "The newest record decides, as it does the lane's names",
+  );
+});

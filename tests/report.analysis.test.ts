@@ -75,6 +75,13 @@ test('An error is classified by its own words, and a locator name in quotes neve
   assert.equal(classifyError(WRONG), 'wrong');
   assert.equal(classifyError(OUTAGE), 'env');
   assert.equal(classifyError('connect ECONNREFUSED 127.0.0.1:4723'), 'env');
+  assert.equal(classifyError("browserType.launch: Chromium distribution 'chrome' is not found"), 'env');
+  assert.equal(classifyError('locator.click: Target page, context or browser has been closed'), 'env');
+  assert.equal(
+    classifyError('Expected "Status" to read "Open" but it read "The page has been closed"'),
+    'wrong',
+    'An app saying closed is no browser going away',
+  );
   assert.equal(classifyError('TypeError: cannot read properties of undefined'), 'unsorted', 'A wording it does not know claims nothing');
   assert.equal(classifyError('"Session timeout banner" was not found within 30000ms'), 'missing');
   assert.equal(classifyError('Expected "Appium settings" to read "On" but it read "Off"'), 'wrong');

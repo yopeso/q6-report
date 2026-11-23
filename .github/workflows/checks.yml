@@ -81,7 +81,8 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm check:report
 
-      # Python 3 and a JDK come with the runner; the recorder test makes its own venv and uses the recorders' Gradle wrapper.
+      # Python 3 and Google Chrome come with the runner and the JDK is set up above; the recorder test makes its own venv,
+      # uses the recorders' Gradle wrapper, and runs the installed Playwright on that Chrome.
       - name: Each recorder writes exactly what a suite with known outcomes must produce
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm check:recorders

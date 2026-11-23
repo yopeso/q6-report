@@ -11,6 +11,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'keeps what it attached'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [],
       "attachments": [
         {
@@ -32,6 +34,8 @@
       "status": "passed",
       "attempts": 2,
       "rerun": "rerun 'passes on its second attempt with a log of each'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [],
       "attachments": [
         {
@@ -56,6 +60,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'adds an item'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -67,6 +73,8 @@
       "status": "skipped",
       "attempts": 1,
       "rerun": "rerun 'cannot run here'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -80,6 +88,8 @@
       "rerun": "rerun 'says \"it'\\''s done\" in café'",
       "at": "CartTest.kt:15",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "first line says \"done\"\nsecond line",
       "steps": [],
       "category": "wrong"
@@ -93,6 +103,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'pays for the order'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [
         {
           "keyword": "",
@@ -123,6 +135,8 @@
       "failedAt": 1,
       "at": "CheckoutTest.kt:13",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <8> but was: <7>",
       "steps": [
         {
@@ -149,6 +163,8 @@
       "rerun": "rerun 'NoSetupTest'",
       "at": "NoSetupTest.kt:11",
       "kind": "error",
+      "browser": "chrome",
+      "platform": "web",
       "error": "IllegalStateException: the fixture would not start",
       "steps": [],
       "category": "code"
@@ -162,6 +178,8 @@
       "status": "skipped",
       "attempts": 1,
       "rerun": "rerun 'NotReadyTest'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -173,6 +191,8 @@
       "status": "skipped",
       "attempts": 1,
       "rerun": "rerun 'cannot run here'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -186,6 +206,8 @@
       "rerun": "rerun 'fails every attempt'",
       "at": "RetryTest.kt:34",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "never adds up ==> expected: <1> but was: <2>",
       "steps": [],
       "image": true,
@@ -200,6 +222,8 @@
       "status": "skipped",
       "attempts": 1,
       "rerun": "rerun 'is turned off'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -211,6 +235,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'passes first time'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -222,6 +248,8 @@
       "status": "passed",
       "attempts": 2,
       "rerun": "rerun 'passes on the second attempt'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [],
       "category": "flaky"
     },
@@ -236,6 +264,8 @@
       "rerun": "rerun 'throws every attempt'",
       "at": "RetryTest.kt:38",
       "kind": "error",
+      "browser": "chrome",
+      "platform": "web",
       "error": "IllegalStateException: the cart is gone",
       "steps": [],
       "image": true,
@@ -253,6 +283,8 @@
       "rerun": "rerun 'charges twice'",
       "at": "ShopTest.kt:128",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "charged 2 times",
       "steps": [],
       "image": true,
@@ -267,6 +299,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun '[1] 1, 2'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -280,6 +314,8 @@
       "rerun": "rerun '[2] 3, 7'",
       "at": "ShopTest.kt:133",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <7> but was: <6>",
       "steps": [],
       "image": true,
@@ -296,6 +332,8 @@
       "rerun": "rerun 'empties a list that is empty'",
       "at": "ShopTest.kt:105",
       "kind": "error",
+      "browser": "chrome",
+      "platform": "web",
       "error": "NoSuchElementException",
       "steps": [],
       "image": true,
@@ -312,6 +350,8 @@
       "rerun": "rerun 'finds a missing button'",
       "at": "ShopTest.kt:67",
       "kind": "missing",
+      "browser": "chrome",
+      "platform": "web",
       "error": "NoSuchElementException: no such element: Unable to locate element: {\"method\":\"css selector\",\"selector\":\"#refund\"}",
       "steps": [],
       "image": true,
@@ -326,6 +366,8 @@
       "status": "skipped",
       "attempts": 1,
       "rerun": "rerun 'is not ready'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": []
     },
     {
@@ -339,6 +381,8 @@
       "rerun": "rerun 'keeps looking for a missing button'",
       "at": "ShopTest.kt:79",
       "kind": "missing",
+      "browser": "chrome",
+      "platform": "web",
       "error": "TimeoutException: Expected condition failed: waiting for the refund button (tried for 0 second(s) with 500 milliseconds interval)",
       "steps": [],
       "image": true,
@@ -355,6 +399,8 @@
       "rerun": "rerun 'opens a file that is not there'",
       "at": "ShopTest.kt:110",
       "kind": "error",
+      "browser": "chrome",
+      "platform": "web",
       "error": "FileNotFoundException: /nowhere/q6-report/fixture.csv (No such file or directory)",
       "steps": [],
       "image": true,
@@ -371,6 +417,8 @@
       "rerun": "rerun 'reaches the server'",
       "at": "ShopTest.kt:92",
       "kind": "env",
+      "browser": "chrome",
+      "platform": "web",
       "error": "WebDriverException: unknown error: net::ERR_CONNECTION_REFUSED",
       "steps": [],
       "image": true,
@@ -387,6 +435,8 @@
       "rerun": "rerun 'reads a missing field'",
       "at": "ShopTest.kt:99",
       "kind": "error",
+      "browser": "chrome",
+      "platform": "web",
       "error": "NullPointerException",
       "steps": [],
       "image": true,
@@ -401,6 +451,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'shows the shop'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [
         {
           "keyword": "",
@@ -425,6 +477,8 @@
       "rerun": "rerun 'totals by helper one'",
       "at": "ShopTest.kt:50",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <2> but was: <1>",
       "steps": [],
       "image": true,
@@ -441,6 +495,8 @@
       "rerun": "rerun 'totals by helper two'",
       "at": "ShopTest.kt:50",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <40> but was: <30>",
       "steps": [],
       "image": true,
@@ -458,6 +514,8 @@
       "failedAt": 1,
       "at": "ShopTest.kt:61",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <Total 8> but was: <Total 7>",
       "steps": [
         {
@@ -485,6 +543,8 @@
       "rerun": "rerun 'waits for a missing button'",
       "at": "ShopTest.kt:73",
       "kind": "timeout",
+      "browser": "chrome",
+      "platform": "web",
       "error": "TimeoutException: Expected condition failed: waiting for visibility of element located by By.id: refund (tried for 0 second(s) with 500 milliseconds interval)",
       "steps": [],
       "image": true,
@@ -501,6 +561,8 @@
       "rerun": "rerun 'waits for a page that never changes'",
       "at": "ShopTest.kt:85",
       "kind": "timeout",
+      "browser": "chrome",
+      "platform": "web",
       "error": "TimeoutException: Expected condition failed: waiting for title to be \"Paid\". Current title: \"Shop\" (tried for 0 second(s) with 500 milliseconds interval)",
       "steps": [],
       "image": true,
@@ -515,6 +577,8 @@
       "status": "passed",
       "attempts": 1,
       "rerun": "rerun 'fills the basket'",
+      "browser": "chrome",
+      "platform": "web",
       "steps": [
         {
           "keyword": "",
@@ -545,6 +609,8 @@
       "failedAt": 1,
       "at": "StepAnnotationTest.kt:23",
       "kind": "check",
+      "browser": "chrome",
+      "platform": "web",
       "error": "expected: <15> but was: <14>",
       "steps": [
         {

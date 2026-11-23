@@ -16,7 +16,16 @@ import {
 } from './history.ts';
 import { isFullRun, runContext } from './context.ts';
 import { reportFolder, runRoot } from './kit.ts';
-import { HISTORY_VERSION, type ResultRecord, type RunRecord, safeFolderName } from './model.ts';
+import {
+  HISTORY_VERSION,
+  LANE_BROWSERS,
+  LANE_PLATFORMS,
+  type LaneBrowser,
+  type LanePlatform,
+  type ResultRecord,
+  type RunRecord,
+  safeFolderName,
+} from './model.ts';
 import { reportUrl, writeReport } from './render.ts';
 import { parseResultLine } from './result-line.ts';
 
@@ -44,6 +53,15 @@ export interface MergedResults {
   /** When the first test began and the last one ended, from the lines themselves, so a folder that travelled still knows. */
   startedAt?: string;
   finishedAt?: string;
+  /** What every line says the lane ran in and on; unset when a line says nothing or two lines disagree. */
+  browser?: string;
+  platform?: string;
+}
+
+/** The one value every line gives, or nothing: a lane that ran in two browsers has no one browser to draw. */
+function agreed(values: (string | undefined)[]): string | undefined {
+  const [first] = values;
+  return first !== undefined && values.every((value) => value === first) ? first : undefined;
 }
 
 /** Reads every worker's results, in a stable order; a scenario outline repeats its name, so its rows are numbered. */
@@ -52,6 +70,8 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
   const files = readdirSync(dir).filter((file) => file.endsWith('.jsonl'));
   let started = Infinity;
   let finished = -Infinity;
+  const browsers: (string | undefined)[] = [];
+  const platforms: (string | undefined)[] = [];
   const results = files
     .flatMap((file) =>
       readFileSync(path.join(dir, file), 'utf8')
@@ -69,6 +89,8 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
             started = Math.min(started, end - parsed.result.ms);
             finished = Math.max(finished, end);
           }
+          browsers.push(parsed.browser);
+          platforms.push(parsed.platform);
           return [parsed.result];
         }),
     )
@@ -79,10 +101,14 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
     seen.set(result.test, count);
     if (count > 1) result.test = `${result.test} #${count}`;
   }
+  const browser = agreed(browsers);
+  const platform = agreed(platforms);
   return {
     results,
     workers: files.length,
     ...(Number.isFinite(started) ? { startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString() } : {}),
+    ...(browser ? { browser } : {}),
+    ...(platform ? { platform } : {}),
   };
 }
 
@@ -120,6 +146,24 @@ async function recordDebugRun({ record, historyDir, outDir, staging, warn, brand
   return reportUrl(written.html);
 }
 
+/**
+ * What a record says its lane ran in or on that the page has no name for, e.g: "Chrome" for "chrome". The record is kept as
+ * it is, since a recording never decides a run, and its lane is drawn without a logo.
+ */
+export function unknownLaneKinds(record: Pick<RunRecord, 'lane' | 'browser' | 'platform'>): string[] {
+  const problems: string[] = [];
+  const { browser, platform } = record as { browser?: string; platform?: string };
+  if (browser !== undefined && !(LANE_BROWSERS as readonly string[]).includes(browser))
+    problems.push(
+      `The lane ${record.lane} names its browser "${browser}", and the report knows ${LANE_BROWSERS.join(', ')}, so it draws the lane without a logo.`,
+    );
+  if (platform !== undefined && !(LANE_PLATFORMS as readonly string[]).includes(platform))
+    problems.push(
+      `The lane ${record.lane} names its platform "${platform}", and the report knows ${LANE_PLATFORMS.join(', ')}, so it draws the lane without a logo.`,
+    );
+  return problems;
+}
+
 /** Adds a finished run to its project's history and rewrites its report. Returns where the page is. */
 export async function recordRun(options: RecordRunOptions): Promise<string> {
   const { record, historyDir, outDir, reportsDir, staging, warn, brand, copy } = options;
@@ -127,6 +171,7 @@ export async function recordRun(options: RecordRunOptions): Promise<string> {
   // The run's id names the folder its images and attachments go in.
   if (safeFolderName(record.id) !== record.id)
     throw new Error(`The run id "${record.id}" cannot name a folder. newRunId gives one that can.`);
+  for (const problem of unknownLaneKinds(record)) warn(problem);
   keepImages(record, historyDir, reportsDir, warn);
   // After the images, as an image the page cannot hold has become an attachment.
   keepAttachments(record, historyDir, reportsDir, warn);
@@ -186,7 +231,7 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
   const batch = env.Q6_BATCH ?? context.batch ?? newRunId();
   const now = new Date().toISOString();
   let url = '';
-  for (const { lane, folder, results, startedAt, finishedAt } of filled) {
+  for (const { lane, folder, results, startedAt, finishedAt, browser, platform } of filled) {
     const narrowedTo = env.Q6_RUN_NARROWED ?? laneNarrowedTo(folder);
     url = await recordRun({
       record: {
@@ -197,6 +242,9 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
         project,
         lane,
         laneLabel: lane,
+        // Kept as the lines wrote them, so recordRun warns about a browser or platform the report does not know.
+        ...(browser ? { browser: browser as LaneBrowser } : {}),
+        ...(platform ? { platform: platform as LanePlatform } : {}),
         narrowedTo,
         isFull: isFullRun(env, Boolean(narrowedTo)),
         startedAt: startedAt ?? now,

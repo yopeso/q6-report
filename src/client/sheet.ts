@@ -3,6 +3,7 @@ import { type Attachment, attachmentsFolderOf } from '../model.ts';
 import { strip } from './charts.ts';
 import { h, icon } from './dom.ts';
 import { failingChip, fmtDateTime, fmtTime } from './format.ts';
+import { laneMark } from './lane-marks.ts';
 import { badge, catLabel, currentPath, go, runHash, shotUri, testHash } from './views.ts';
 
 export function findResult(model: Model, hash: string): Result | undefined {
@@ -198,7 +199,7 @@ export function renderSheet(model: Model): void {
                 text: stretch.since === result && !stretch.isCut ? 'New in this run' : failingChip(stretch),
               })
             : null,
-          model.lanes.length > 1 && lane ? h('span', { cls: 'chip', text: lane.long }) : null,
+          model.lanes.length > 1 && lane ? h('span', { cls: 'chip' }, [laneMark(lane), lane.long]) : null,
         ]),
         h('h2', { text: result.name }),
         h('p', {

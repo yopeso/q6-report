@@ -140,6 +140,17 @@ svg {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* A lane's logo sits in the line of text that names it, at the size of that text, wherever that is. */
+.lane-name {
+  white-space: nowrap;
+}
+.lane-mark {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.35em;
+  vertical-align: -0.2em;
+}
 
 /* A light bar: the brand shows in the logo, one thin gradient line and the yellow on the current tab. */
 .top {
@@ -555,6 +566,15 @@ svg {
   background: var(--flaky-soft);
   color: var(--flaky-ink);
 }
+/* A chip naming every lane a cause failed on wraps between the names on a phone, rather than widen the page; one line stays 21px tall. */
+.chip.is-lanes {
+  height: auto;
+  min-height: 21px;
+  max-width: 100%;
+  padding: 2px 7px;
+  line-height: 17px;
+  white-space: normal;
+}
 .cat {
   display: inline-flex;
   align-items: center;
@@ -932,8 +952,11 @@ td .fail-text {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+/* A run of many lanes has more filters than a phone is wide, so they wrap inside the frame rather than widen the page. */
 .seg {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -1309,6 +1332,12 @@ dialog img {
 }
 .foot .logo img {
   height: 16px;
+}
+.foot .marks-notice {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 1240px) {

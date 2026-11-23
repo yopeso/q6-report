@@ -1,7 +1,7 @@
 // The report's numbers, from the records alone. Pure, because the page and the tests both run it.
 import { type Brand, DEFAULT_BRAND } from './brand.ts';
 import { type Copy, DEFAULT_COPY } from './copy.ts';
-import type { FailureKind, ReportData, ResultRecord, RunRecord } from './model.ts';
+import { type FailureKind, LANE_BROWSERS, type LaneBrowser, type ReportData, type ResultRecord, type RunRecord } from './model.ts';
 import { kindFromWords } from './wording.ts';
 
 export type CategoryKey = 'known' | 'wrong' | 'missing' | 'timeout' | 'env' | 'code' | 'flaky' | 'unsorted';
@@ -110,10 +110,24 @@ export interface Run {
   byLane: Record<string, LaneStats>;
 }
 
+/** The logo a lane is drawn with: its browser's, or its phone platform's. */
+export type LaneMark = LaneBrowser | 'android' | 'ios';
+
 export interface Lane {
   id: string;
   short: string;
   long: string;
+  mark?: LaneMark;
+}
+
+/**
+ * A lane's logo from what its record says: the browser it ran in, else the phone it ran on. A record that says neither,
+ * or names a browser the page has no logo for, has none, and so does a lane whose id only looks like a browser's name.
+ */
+export function laneMarkOf(record: Pick<RunRecord, 'browser' | 'platform'>): LaneMark | undefined {
+  if ((LANE_BROWSERS as readonly string[]).includes(record.browser ?? '')) return record.browser;
+  if (record.platform === 'android' || record.platform === 'ios') return record.platform;
+  return undefined;
 }
 
 export interface TestInfo {
@@ -159,11 +173,16 @@ function lanesOf(records: RunRecord[]): Lane[] {
   const shortOf = (record: RunRecord) => record.laneShort ?? record.lane;
   const all = [...seen.values()];
   // Two lanes with one short name, e.g: staging and production in Chrome, are told apart by their own names.
-  return all.map((record) => ({
-    id: record.lane,
-    short: all.filter((other) => shortOf(other) === shortOf(record)).length > 1 ? record.lane : shortOf(record),
-    long: record.laneLabel,
-  }));
+  // The newest record decides a lane's logo, so a lane recorded before browsers were has one once it runs again.
+  return all.map((record) => {
+    const mark = laneMarkOf(record);
+    return {
+      id: record.lane,
+      short: all.filter((other) => shortOf(other) === shortOf(record)).length > 1 ? record.lane : shortOf(record),
+      long: record.laneLabel,
+      ...(mark ? { mark } : {}),
+    };
+  });
 }
 
 const emptyCats = (): Record<CategoryKey, number> => ({

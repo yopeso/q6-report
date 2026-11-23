@@ -3,6 +3,7 @@
   "exitCode": 1,
   "results": [
     {
+      "platform": "android",
       "test": "Shop::Adds an item",
       "name": "Adds an item",
       "group": "Shop",
@@ -30,6 +31,7 @@
       ]
     },
     {
+      "platform": "android",
       "test": "Shop::Calls the other service",
       "name": "Calls the other service",
       "group": "Shop",
@@ -57,6 +59,7 @@
       "category": "env"
     },
     {
+      "platform": "android",
       "test": "Shop::Calls the service",
       "name": "Calls the service",
       "group": "Shop",
@@ -84,6 +87,7 @@
       "category": "env"
     },
     {
+      "platform": "android",
       "test": "Shop::Doubles 1 -- @1.1",
       "name": "Doubles 1 -- @1.1",
       "group": "Shop",
@@ -107,6 +111,7 @@
       ]
     },
     {
+      "platform": "android",
       "test": "Shop::Doubles 3 -- @1.2",
       "name": "Doubles 3 -- @1.2",
       "group": "Shop",
@@ -135,6 +140,7 @@
       "category": "known"
     },
     {
+      "platform": "android",
       "test": "Shop::Fails in its hook",
       "name": "Fails in its hook",
       "group": "Shop",
@@ -161,6 +167,7 @@
       "category": "code"
     },
     {
+      "platform": "android",
       "test": "Shop::Fails on every attempt",
       "name": "Fails on every attempt",
       "group": "Shop",
@@ -189,6 +196,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Fails with a screenshot",
       "name": "Fails with a screenshot",
       "group": "Shop",
@@ -217,6 +225,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Finds a missing object",
       "name": "Finds a missing object",
       "group": "Shop",
@@ -244,6 +253,7 @@
       "category": "missing"
     },
     {
+      "platform": "android",
       "test": "Shop::Has a screenshot on its first attempt only",
       "name": "Has a screenshot on its first attempt only",
       "group": "Shop",
@@ -271,6 +281,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Has an undefined step",
       "name": "Has an undefined step",
       "group": "Shop",
@@ -297,6 +308,7 @@
       "category": "code"
     },
     {
+      "platform": "android",
       "test": "Shop::Is not ready",
       "name": "Is not ready",
       "group": "Shop",
@@ -319,6 +331,7 @@
       ]
     },
     {
+      "platform": "android",
       "test": "Shop::Keeps what it attached",
       "name": "Keeps what it attached",
       "group": "Shop",
@@ -356,6 +369,7 @@
       ]
     },
     {
+      "platform": "android",
       "test": "Shop::Passes on its second attempt",
       "name": "Passes on its second attempt",
       "group": "Shop",
@@ -391,6 +405,7 @@
       "category": "flaky"
     },
     {
+      "platform": "android",
       "test": "Shop::Raises a value error",
       "name": "Raises a value error",
       "group": "Shop",
@@ -418,6 +433,7 @@
       "category": "code"
     },
     {
+      "platform": "android",
       "test": "Shop::Reads a missing key",
       "name": "Reads a missing key",
       "group": "Shop",
@@ -445,6 +461,7 @@
       "category": "code"
     },
     {
+      "platform": "android",
       "test": "Shop::Says \"it's done\" in café",
       "name": "Says \"it's done\" in café",
       "group": "Shop",
@@ -472,6 +489,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Totals a line",
       "name": "Totals a line",
       "group": "Shop",
@@ -509,6 +527,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Totals by helper one",
       "name": "Totals by helper one",
       "group": "Shop",
@@ -536,6 +555,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Totals by helper two",
       "name": "Totals by helper two",
       "group": "Shop",
@@ -563,6 +583,7 @@
       "category": "wrong"
     },
     {
+      "platform": "android",
       "test": "Shop::Waits too long",
       "name": "Waits too long",
       "group": "Shop",

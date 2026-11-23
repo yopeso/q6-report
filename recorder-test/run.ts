@@ -44,6 +44,8 @@ interface Suite {
   command(selection: 'all' | 'passing'): { file: string; args: string[]; env: NodeJS.ProcessEnv };
   /** Where a person finds what the recorder said during a run, beyond the run's own output. */
   recorderSaid(output: string): string;
+  /** What the suite's lane must be recorded as running in and on, which the page draws as its icon. */
+  lane: { browser?: string; platform?: string };
 }
 
 // A run must look like a laptop's whatever machine this check is on, or a pull request's CI would change what it proves.
@@ -70,6 +72,26 @@ const venvPython = path.join(cacheDir, 'behave-venv', 'bin', 'python');
 const recordersPython = path.join(packageDir, 'recorders', 'python');
 const recordersJunit5 = path.join(packageDir, 'recorders', 'junit5');
 const gradlew = path.join(recordersJunit5, 'gradlew');
+// Kotlin 2.0.21, which junit5/build.gradle.kts builds the suite with, targets JVM 22 at most; on a newer JDK its Java and
+// Kotlin targets differ and Gradle stops with Kotlin's words. Raise this with that Kotlin version.
+const NEWEST_JDK = 22;
+
+/** The java gradlew starts Gradle with, as gradlew picks it: JAVA_HOME's when it is set, else the one on PATH. */
+function gradleJava(): string {
+  const home = process.env.JAVA_HOME;
+  if (!home) return 'java';
+  const legacy = path.join(home, 'jre', 'sh', 'java');
+  return existsSync(legacy) ? legacy : path.join(home, 'bin', 'java');
+}
+
+/** A JDK's feature release from what java -version prints, e.g: 21 from "21.0.5" and 8 from "1.8.0_402". */
+function javaMajor(printed: string): number | undefined {
+  const match = /version "(\d+)(?:\.(\d+))?/.exec(printed);
+  if (!match) return undefined;
+  return Number(match[1] === '1' ? match[2] : match[1]);
+}
+
+const playwrightCli = path.join(packageDir, 'node_modules', 'playwright', 'cli.js');
 const licence = readFileSync(path.join(packageDir, 'LICENSE'));
 // A release's version, which the release workflow sets so each part comes from its registry, as a team installs it.
 const published = process.env.Q6_REPORT_FROM_REGISTRY;
@@ -184,10 +206,12 @@ const behave: Suite = {
       file: venvPython,
       args: ['-m', 'behave', '--tags=not @skip', ...(selection === 'passing' ? ['--name', 'Adds an item'] : [])],
       // This test finishes each run itself, with the command it packed, so the recorder must not finish it first.
-      env: { ...NO_BYTECODE, Q6_REPORT_FINISH: 'off' },
+      // The suite drives no screen, so it names its lane as a phone suite would, to prove the setting reaches the record.
+      env: { ...NO_BYTECODE, Q6_REPORT_FINISH: 'off', Q6_REPORT_PLATFORM: 'android' },
     };
   },
   recorderSaid: (output) => output,
+  lane: { platform: 'android' },
 };
 
 const junit5: Suite = {
@@ -195,8 +219,14 @@ const junit5: Suite = {
   dir: path.join(here, 'junit5'),
   builtAs: published ? 'release on Maven Central' : 'Maven publication',
   prepare() {
-    const java = spawnSync('java', ['-version'], { encoding: 'utf8' });
+    const java = spawnSync(gradleJava(), ['-version'], { encoding: 'utf8' });
     need(java.status === 0 && !java.error, 'A JDK is missing, and the JUnit 5 recorder runs on one.', 'Install JDK 21.');
+    const major = javaMajor(java.stderr);
+    need(
+      major !== undefined && major <= NEWEST_JDK,
+      `Gradle would run on JDK ${major ?? 'of an unknown version'}, and the JUnit 5 suite builds with a Kotlin that targets JVM ${NEWEST_JDK} at most.`,
+      'Install JDK 21 and point JAVA_HOME at it.',
+    );
     if (published) {
       // Compiling the tests resolves the recorder; Gradle remembers a missing module, so each try asks Maven Central again.
       installWithRetries(`q6-report-junit5 ${published} from Maven Central`, () =>
@@ -220,7 +250,8 @@ const junit5: Suite = {
         ...(published ? ['-PfromMavenCentral'] : []),
         ...(selection === 'passing' ? ['--tests', 'CartTest.adds an item'] : []),
       ],
-      env: {},
+      // Its tests drive a headless Chrome.
+      env: { Q6_REPORT_BROWSER: 'chrome', Q6_REPORT_PLATFORM: 'web' },
     };
   },
   // Gradle keeps what a test process prints in its test results, and not on its own output.
@@ -231,9 +262,48 @@ const junit5: Suite = {
       .map((file) => readFileSync(path.join(results, file), 'utf8'))
       .join('\n');
   },
+  lane: { browser: 'chrome', platform: 'web' },
 };
 
-const SUITES = [behave, junit5];
+const playwrightTest: Suite = {
+  name: 'playwright-test',
+  dir: path.join(here, 'playwright'),
+  builtAs: published ? 'release on npm' : 'npm package',
+  prepare() {
+    const chrome = [
+      '/Applications/Google Chrome.app',
+      '/opt/google/chrome/chrome',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    ];
+    need(
+      chrome.some((file) => existsSync(file)),
+      'Google Chrome is missing, and the Playwright suite drives it.',
+      'Install Chrome.',
+    );
+    need(existsSync(playwrightCli), 'Playwright is missing from this repository.', 'Run pnpm install --frozen-lockfile.');
+    const installed = path.dirname(path.dirname(reportCommand));
+    const resolved = run(
+      process.execPath,
+      ['--input-type=module', '-e', "const recorder = await import('q6-report/playwright'); process.stdout.write(typeof recorder.default)"],
+      process.env,
+      path.dirname(installed),
+    );
+    assert.equal(resolved.output, 'function', `q6-report/playwright does not resolve in the installed package:\n${resolved.output}`);
+  },
+  command(selection) {
+    const recorder = path.join(path.dirname(path.dirname(reportCommand)), 'q6-report', 'dist', 'playwright.js');
+    return {
+      file: process.execPath,
+      args: [playwrightCli, 'test', ...(selection === 'passing' ? ['--grep', 'adds an item'] : [])],
+      env: { Q6_RECORDER: recorder },
+    };
+  },
+  recorderSaid: (output) => output,
+  // Nothing names it: the reporter reads Chrome from the config's channel.
+  lane: { browser: 'chrome', platform: 'web' },
+};
+
+const SUITES = [behave, junit5, playwrightTest];
 
 function runSuite(suite: Suite, reportDir: string, selection: 'all' | 'passing' = 'all'): { code: number; output: string } {
   const { file, args, env } = suite.command(selection);
@@ -297,7 +367,7 @@ function checkTypesAsInstalled(installed: string): void {
   const typeCheck = (lines: string[]) => {
     writeFileSync(
       path.join(installed, 'consumer.ts'),
-      [`import { finishLanes, writeReport, type ResultRecord } from 'q6-report';`, ...lines].join('\n') + '\n',
+      [`import { finishLanes, historyFile, RUN_LIMIT, writeReport, type ResultRecord } from 'q6-report';`, ...lines].join('\n') + '\n',
     );
     const options = { module: 'nodenext', moduleResolution: 'nodenext', target: 'es2022', strict: true, noEmit: true, types: ['node'] };
     // The workspace's Node types, as a consumer's own project has them.
@@ -311,6 +381,7 @@ function checkTypesAsInstalled(installed: string): void {
   const right = typeCheck([
     `const result: ResultRecord = { test: 't', name: 't', group: '', tags: [], status: 'passed', ms: 1, steps: [] };`,
     'void finishLanes; void writeReport; void result;',
+    'const newest: string = historyFile("history", "shop"); const kept: number = RUN_LIMIT; void newest; void kept;',
   ]);
   assert.equal(right.code, 0, `A project using the installed package does not type-check:\n${right.output}`);
   const wrong = typeCheck([`const result: ResultRecord = { test: 1 };`, 'void result;']);
@@ -365,12 +436,23 @@ interface LineAttachment {
   attempt?: number;
 }
 
-/** Each attached file as what it holds, as its name in the lane's folder carries a process id; a binary one by its size. */
+/**
+ * What an attached file holds, for a comparison that holds on every machine: a zip, e.g: a Playwright trace, and a
+ * screenshot differ in size on each, and Playwright's error context ends in a copy of the suite's own source.
+ */
+function contentOf(name: string, bytes: Buffer): string {
+  if (bytes.subarray(0, 2).toString('latin1') === 'PK') return 'a zip archive';
+  if (bytes.subarray(0, 4).equals(PNG_START)) return 'a PNG image';
+  if (bytes.includes(0)) return `${bytes.length} bytes`;
+  const text = bytes.toString('utf8');
+  return name === 'error-context' ? (text.split('\n# Test source')[0] ?? text) : text;
+}
+
+/** Each attached file as what it holds, as its name in the lane's folder carries a process id. */
 const keptFiles = (files: LineAttachment[], laneDir: string) =>
   files.map(({ path: file, ...rest }) => {
     assert.match(file, /^attachments\//, `An attachment is kept inside its lane's folder: ${file}`);
-    const bytes = readFileSync(path.join(laneDir, file));
-    return { ...rest, content: bytes.includes(0) ? `${bytes.length} bytes` : bytes.toString('utf8') };
+    return { ...rest, content: contentOf(rest.name, readFileSync(path.join(laneDir, file))) };
   });
 
 const byTest = <T extends { test: string }>(results: T[]): T[] => [...results].sort((a, b) => a.test.localeCompare(b.test));
@@ -458,6 +540,14 @@ async function check(suite: Suite, shouldPrint: boolean): Promise<void> {
     say(`${actual.length} results are exactly the ones expected, each sorted as expected`);
     assert.equal(files.length, expected.workers, 'Each worker writes a file of its own');
     say(`${files.length} ${files.length === 1 ? 'worker wrote its file' : 'workers wrote their own files'}`);
+    const laneRun = data.records.find((record) => record.lane === suite.name);
+    assert.deepEqual(
+      { browser: laneRun?.browser, platform: laneRun?.platform },
+      { browser: suite.lane.browser, platform: suite.lane.platform },
+    );
+    say(
+      `its lane is recorded as ${[suite.lane.browser, suite.lane.platform].filter(Boolean).join(' on ')}, which the page draws as its icon`,
+    );
     assert.deepEqual(causes, expected.causes);
     say(`the page draws ${causes.length} causes, the ones expected`);
     const images = actual.filter((line) => line.image).length;

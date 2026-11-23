@@ -11,6 +11,15 @@ export type StepStatus = 'passed' | 'failed' | 'notRun';
 export const FAILURE_KINDS = ['check', 'error', 'timeout', 'env', 'missing'] as const;
 export type FailureKind = (typeof FAILURE_KINDS)[number];
 export type ImageType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+/**
+ * The browsers a lane can name, each drawn with its logo. Chromium and WebKit are the engines' own builds, which are not
+ * Chrome and Safari, and Chromium is what Playwright runs unless a suite names another.
+ */
+export const LANE_BROWSERS = ['chrome', 'chromium', 'edge', 'firefox', 'safari', 'webkit'] as const;
+export type LaneBrowser = (typeof LANE_BROWSERS)[number];
+/** What a lane can run on; a phone lane is drawn with its platform's logo. */
+export const LANE_PLATFORMS = ['web', 'android', 'ios'] as const;
+export type LanePlatform = (typeof LANE_PLATFORMS)[number];
 
 export interface StepRecord {
   keyword: string;
@@ -83,6 +92,10 @@ export interface RunRecord {
   laneLabel: string;
   /** The lane's name where space is short; the lane's own name is used without it. */
   laneShort?: string;
+  /** The browser the lane ran in, whose logo the page draws beside the lane's name; unset when its suite does not say. */
+  browser?: LaneBrowser;
+  /** What the lane ran on; unset when its suite does not say. */
+  platform?: LanePlatform;
   /** What a debug run was narrowed to, in the words it was typed; empty when it ran the whole suite as a debug run. */
   narrowedTo?: string;
   /** False when someone narrowed the run to a tag or a file, which trends leave out. */

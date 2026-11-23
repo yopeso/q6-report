@@ -1,6 +1,6 @@
 // A made-up shop's history, shaped like what a run records, for the report's tests and for looking at the page.
 // Every failure a report must show has a place here: new, still failing, flaky, on one lane, on every lane, and a run that never started.
-import { HISTORY_VERSION, type ResultRecord, type RunRecord } from '../src/model.ts';
+import { HISTORY_VERSION, type LaneBrowser, type LanePlatform, type ResultRecord, type RunRecord } from '../src/model.ts';
 
 interface Scenario {
   name: string;
@@ -11,11 +11,11 @@ interface Scenario {
   lanes: string[];
 }
 
-const LANES = {
-  web: { label: 'Shop on staging in Chrome', short: 'Web' },
-  android: { label: 'Shop on an Android emulator', short: 'Android' },
-  ios: { label: 'Shop on an iOS simulator', short: 'iOS' },
-} as const;
+const LANES: Record<'web' | 'android' | 'ios', { label: string; short: string; platform: LanePlatform; browser?: LaneBrowser }> = {
+  web: { label: 'Shop on staging in Chrome', short: 'Web', platform: 'web', browser: 'chrome' },
+  android: { label: 'Shop on an Android emulator', short: 'Android', platform: 'android' },
+  ios: { label: 'Shop on an iOS simulator', short: 'iOS', platform: 'ios' },
+};
 type LaneId = keyof typeof LANES;
 const EVERYWHERE: LaneId[] = ['web', 'android', 'ios'];
 
@@ -206,6 +206,8 @@ export function sampleHistory(days = 60, options: { project?: string; laneIds?: 
         lane,
         laneLabel: LANES[lane].label,
         laneShort: LANES[lane].short,
+        platform: LANES[lane].platform,
+        ...(LANES[lane].browser ? { browser: LANES[lane].browser } : {}),
         isFull: true,
         startedAt: new Date(at).toISOString(),
         finishedAt: new Date(at + results.reduce((sum, result) => sum + result.ms, 0) + 40000).toISOString(),

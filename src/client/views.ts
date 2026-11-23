@@ -21,8 +21,9 @@ import {
 import type { BrandImage } from '../brand.ts';
 import { safeFolderName } from '../model.ts';
 import { chartBox, durationBars, historyBars, laneLines, type Series, sparkline, stackedBars, strip } from './charts.ts';
-import { h, icon } from './dom.ts';
+import { h, icon, type Kid } from './dom.ts';
 import { failingChip, fmtDate, fmtDateTime, fmtTime, pct, plural, shortSha } from './format.ts';
+import { laneTag, trademarkNotice } from './lane-marks.ts';
 
 /** A run with nothing passed or failed has no pass rate, rather than a perfect one. */
 const rateOf = (run: { passed: number; failed: number; rate: number }): string => (run.passed + run.failed ? pct(run.rate) : '-');
@@ -107,11 +108,11 @@ function panel(
   ]);
 }
 
-function stat(key: string, value: string, foot: string | null, options: { spark?: number[]; tone?: string } = {}): HTMLElement {
+function stat(key: string, value: string, foot: string | Kid[] | null, options: { spark?: number[]; tone?: string } = {}): HTMLElement {
   return h('div', { cls: 'stat' }, [
     h('div', { cls: 'k' }, [h('span', { text: key }), options.spark ? sparkline(options.spark) : null]),
     h('div', { cls: `v ${options.tone ?? ''}`, text: value }),
-    foot ? h('div', { cls: 'f', text: foot }) : null,
+    foot ? h('div', { cls: 'f' }, Array.isArray(foot) ? foot : [foot]) : null,
   ]);
 }
 
@@ -171,17 +172,34 @@ export function chrome(ui: Ui, active: string): HTMLElement {
   ]);
 }
 
-export const footer = (ui: Ui): HTMLElement =>
-  h('footer', { cls: 'foot' }, [logoSpan(ui.model.brand.footer.logo), h('span', { text: ui.model.brand.footer.text })]);
+export function footer(ui: Ui): HTMLElement {
+  const notice = trademarkNotice(ui.model.lanes);
+  return h('footer', { cls: 'foot' }, [
+    logoSpan(ui.model.brand.footer.logo),
+    h('span', { text: ui.model.brand.footer.text }),
+    notice.length ? h('p', { cls: 'marks-notice', text: notice.join(' ') }) : null,
+  ]);
+}
 
 const laneOf = (model: Model, id: string): Lane => model.lanes.find((lane) => lane.id === id) ?? { id, short: id, long: id };
-const laneNames = (model: Model, ids: string[]): string => ids.map((id) => laneOf(model, id).short).join(', ');
+/** A lane's short name, with its logo before it when it has one. */
+const laneName = (model: Model, id: string): HTMLElement => laneTag(laneOf(model, id));
+/** Lanes by name, each with its logo, as a sentence lists them; one element, so a flex parent's gap never lands before a comma. */
+const laneNames = (model: Model, ids: string[]): HTMLElement =>
+  h(
+    'span',
+    {},
+    ids.flatMap((id, i) => (i ? [', ', laneName(model, id)] : [laneName(model, id)])),
+  );
 
-function runLine(model: Model, run: Run): string {
+function runLine(model: Model, run: Run): Kid[] {
   const where = [run.branch ? `on ${run.branch}` : null, shortSha(run.commit) ? `at ${shortSha(run.commit)!}` : null]
     .filter(Boolean)
     .join(' ');
-  return `${run.trigger}${where ? ` ${where}` : ''}, ${fmtDateTime(run.at)}${run.lanes.length ? `, on ${laneNames(model, run.lanes)}` : ''}`;
+  return [
+    `${run.trigger}${where ? ` ${where}` : ''}, ${fmtDateTime(run.at)}`,
+    ...(run.lanes.length ? [', on ', laneNames(model, run.lanes)] : []),
+  ];
 }
 
 function clusterRow(model: Model, cluster: Cluster, hasThumbs: boolean): HTMLElement {
@@ -213,8 +231,8 @@ function clusterRow(model: Model, cluster: Cluster, hasThumbs: boolean): HTMLEle
             : h('span', { cls: 'chip is-still', text: failingChip(longest) }),
         model.lanes.length > 1
           ? isOnlyHere
-            ? h('span', { cls: 'chip is-only', text: `Only on ${laneOf(model, cluster.lanes[0]!).short}` })
-            : h('span', { cls: 'chip', text: laneNames(model, cluster.lanes) })
+            ? h('span', { cls: 'chip is-only' }, ['Only on ', laneName(model, cluster.lanes[0]!)])
+            : h('span', { cls: 'chip is-lanes' }, [laneNames(model, cluster.lanes)])
           : null,
         catLabel(cluster.category),
         cluster.bug ? h('span', { cls: 'chip' }, [icon('bug'), cluster.bug]) : null,
@@ -295,7 +313,7 @@ function lanesPanel(model: Model, run: Run): HTMLElement {
         return h('div', { cls: 'plat' }, [
           h('div', { cls: 'plat-h' }, [
             h('span', {}, [
-              h('b', { text: lane.short }),
+              h('b', {}, [laneTag(lane)]),
               h('span', { text: `  ${lane.long === lane.short ? '' : `${lane.long}, `}${fmtTime(stats.ms)}` }),
             ]),
             h('span', { cls: 'plat-n', text: `${stats.passed} of ${stats.total}` }),
@@ -422,7 +440,8 @@ export function viewOverview(ui: Ui): Node[] {
       h('div', {}, [
         h('h1', { text: model.project }),
         h('p', { cls: 'sub' }, [
-          `${run.isDebug ? 'Trial run' : 'Run'} #${run.n}, ${runLine(model, run)}`,
+          `${run.isDebug ? 'Trial run' : 'Run'} #${run.n}, `,
+          ...runLine(model, run),
           run.url ? ' ' : null,
           run.url ? h('a', { cls: 'link', href: run.url, target: '_blank', rel: 'noopener', text: 'Open in CI' }) : null,
         ]),
@@ -557,10 +576,11 @@ export function viewOverview(ui: Ui): Node[] {
               h('div', { cls: 'name mono', style: 'font-weight:500', text: cluster.error.split('\n')[0] ?? '' }),
               h('div', { style: 'margin-top:4px;display:flex;gap:12px;align-items:center;flex-wrap:wrap' }, [
                 catLabel(cluster.category),
-                h('span', {
-                  cls: 'meta',
-                  text: `${plural(cluster.tests.length, 'test')}, ${laneNames(model, cluster.lanes)}, last seen ${fmtDate(cluster.last.at)}`,
-                }),
+                h('span', { cls: 'meta' }, [
+                  `${plural(cluster.tests.length, 'test')}, `,
+                  laneNames(model, cluster.lanes),
+                  `, last seen ${fmtDate(cluster.last.at)}`,
+                ]),
               ]),
             ]),
             h(
@@ -601,10 +621,10 @@ export function viewOverview(ui: Ui): Node[] {
             h('a', { href: testHash(entry.test.id), style: 'grid-template-columns:minmax(0,1fr) 170px 48px' }, [
               h('div', { style: 'min-width:0' }, [
                 h('div', { cls: 'name', text: entry.test.name }),
-                h('div', {
-                  cls: 'meta',
-                  text: `${plural(entry.count, 'unexplained failure')}: ${entry.perLane.map((item) => `${laneOf(model, item.lane).short} ${item.count}`).join(', ')}`,
-                }),
+                h('div', { cls: 'meta' }, [
+                  `${plural(entry.count, 'unexplained failure')}: `,
+                  ...entry.perLane.flatMap((item, i) => [i ? ', ' : null, laneName(model, item.lane), ` ${item.count}`]),
+                ]),
               ]),
               strip(entry.test.history[entry.perLane[0]!.lane] ?? []),
               h('div', { cls: 'r', style: 'font-weight:600', text: pct(entry.rate) }),
@@ -620,10 +640,11 @@ export function viewOverview(ui: Ui): Node[] {
             h('a', { href: testHash(entry.test.id), style: 'grid-template-columns:minmax(0,1fr) auto auto' }, [
               h('div', { style: 'min-width:0' }, [
                 h('div', { cls: 'name', text: entry.test.name }),
-                h('div', {
-                  cls: 'meta',
-                  text: entry.perLane.map((item) => `${laneOf(model, item.lane).short} +${fmtTime(item.up)}`).join(', '),
-                }),
+                h(
+                  'div',
+                  { cls: 'meta' },
+                  entry.perLane.flatMap((item, i) => [i ? ', ' : null, laneName(model, item.lane), ` +${fmtTime(item.up)}`]),
+                ),
               ]),
               h('div', { cls: 'r', style: 'color:var(--ink3)', text: `${fmtTime(entry.worst.before)} to ${fmtTime(entry.worst.recent)}` }),
               h('div', { cls: 'r up', text: `+${fmtTime(entry.worst.up)}` }),
@@ -677,7 +698,7 @@ export function viewOverview(ui: Ui): Node[] {
           }),
           h('td', { style: 'width:120px' }, [
             failingLanes.length === 1 && test.lanes.length > 1
-              ? h('span', { cls: 'chip is-only', text: `Only ${laneOf(model, failingLanes[0]!).short}` })
+              ? h('span', { cls: 'chip is-only' }, ['Only ', laneName(model, failingLanes[0]!)])
               : null,
             failingLanes.length > 1 && failingLanes.length === test.lanes.length
               ? h('span', { cls: 'chip is-still', text: 'Everywhere' })
@@ -693,7 +714,7 @@ export function viewOverview(ui: Ui): Node[] {
             h('thead', {}, [
               h('tr', {}, [
                 h('th', { text: 'Test' }),
-                ...model.lanes.map((lane) => h('th', { text: `${lane.short}, last 30 results` })),
+                ...model.lanes.map((lane) => h('th', {}, [laneTag(lane), ', last 30 results'])),
                 h('th'),
               ]),
             ]),
@@ -767,7 +788,7 @@ function attemptsPanel(model: Model): HTMLElement {
       h('td', {}, [h('a', { cls: 'link', href: runHash(run), text: `#${run.n}`, onclick: (event: Event) => event.stopPropagation() })]),
       h('td', { text: fmtDateTime(run.at), style: 'white-space:nowrap' }),
       h('td', { text: run.narrowedTo || 'The whole suite' }),
-      h('td', { text: laneNames(model, run.lanes) }),
+      h('td', {}, [laneNames(model, run.lanes)]),
       h('td', {}, [run.total ? resultBar(run) : h('span', { cls: 't-fail', text: 'Could not start' })]),
       h('td', {
         cls: `num${run.failed ? ' t-fail' : run.total ? ' t-pass' : ''}`,
@@ -831,7 +852,7 @@ function gridPanel(model: Model): HTMLElement | null {
               rows.map((row) =>
                 h('tr', {}, [
                   h('td', { cls: 'grid-name', text: row.name }),
-                  showLane ? h('td', { text: laneOf(model, row.lane).short }) : null,
+                  showLane ? h('td', {}, [laneName(model, row.lane)]) : null,
                   gridCell(row.lastFull),
                   ...row.cells.map(gridCell),
                 ]),
@@ -1037,15 +1058,18 @@ export function viewRun(ui: Ui, id: string, isDebugRun = false): Node[] {
       ? h(
           'div',
           { cls: 'seg' },
-          [['all', 'All lanes'] as const, ...run.lanes.map((lane) => [lane, laneOf(model, lane).short] as const)].map(([key, label]) =>
-            h('button', {
-              cls: ui.runLane === key ? 'is-on' : '',
-              text: label,
-              onclick: () => {
-                ui.runLane = key;
-                ui.rerender();
+          [['all', 'All lanes'] as const, ...run.lanes.map((lane) => [lane, laneName(model, lane)] as const)].map(([key, label]) =>
+            h(
+              'button',
+              {
+                cls: ui.runLane === key ? 'is-on' : '',
+                onclick: () => {
+                  ui.runLane = key;
+                  ui.rerender();
+                },
               },
-            }),
+              [label],
+            ),
           ),
         )
       : null;
@@ -1060,7 +1084,7 @@ export function viewRun(ui: Ui, id: string, isDebugRun = false): Node[] {
             ? h('div', { cls: 's', text: result.group })
             : null,
       ]),
-      run.lanes.length > 1 ? h('td', { text: laneOf(model, result.lane).short, style: 'width:90px' }) : null,
+      run.lanes.length > 1 ? h('td', { style: 'width:90px' }, [laneName(model, result.lane)]) : null,
       h('td', { style: 'width:150px' }, result.category ? [catLabel(result.category)] : []),
       h('td', { cls: 'num', text: result.status === 'skipped' ? '-' : fmtTime(result.ms), style: 'width:80px' }),
     ]),
@@ -1073,7 +1097,7 @@ export function viewRun(ui: Ui, id: string, isDebugRun = false): Node[] {
         h('div', {}, [
           h('h1', { text: `${isDebugRun ? 'trial run' : 'run'} #${run.n}` }),
           h('p', { cls: 'sub' }, [
-            runLine(model, run),
+            ...runLine(model, run),
             isDebugRun ? `. ${whatRan(run)}` : null,
             run.url ? ' ' : null,
             run.url ? h('a', { cls: 'link', href: run.url, target: '_blank', rel: 'noopener', text: 'Open in CI' }) : null,
@@ -1155,7 +1179,7 @@ export function viewTests(ui: Ui): Node[] {
         h('a', { cls: 't', href: testHash(test.id), text: test.name, onclick: (event: Event) => event.stopPropagation() }),
         h('div', { cls: 's', text: [test.group, test.tags.join(' ')].filter(Boolean).join(', ') }),
       ]),
-      h('td', { text: laneNames(model, test.lanes), style: 'white-space:nowrap' }),
+      h('td', { style: 'white-space:nowrap' }, [laneNames(model, test.lanes)]),
       h('td', { style: 'width:190px' }, [strip(test.history[test.lanes[0]!] ?? [])]),
       h('td', { cls: `num${rate < 0.9 ? ' t-fail' : ''}`, style: 'font-weight:600', text: pct(rate) }),
       h('td', { cls: 'num', text: times.length ? fmtTime(median(times)) : '-' }),
@@ -1225,15 +1249,18 @@ export function viewTest(ui: Ui, id: string): Node[] {
       ? h(
           'div',
           { cls: 'seg' },
-          [['all', 'All lanes'] as const, ...test.lanes.map((lane) => [lane, laneOf(model, lane).short] as const)].map(([key, label]) =>
-            h('button', {
-              cls: ui.testLane === key ? 'is-on' : '',
-              text: label,
-              onclick: () => {
-                ui.testLane = key;
-                ui.rerender();
+          [['all', 'All lanes'] as const, ...test.lanes.map((lane) => [lane, laneName(model, lane)] as const)].map(([key, label]) =>
+            h(
+              'button',
+              {
+                cls: ui.testLane === key ? 'is-on' : '',
+                onclick: () => {
+                  ui.testLane = key;
+                  ui.rerender();
+                },
               },
-            }),
+              [label],
+            ),
           ),
         )
       : null;
@@ -1262,18 +1289,20 @@ export function viewTest(ui: Ui, id: string): Node[] {
         stat(
           'Latest',
           failing.length ? 'Failed' : 'Passed',
-          `${fmtDateTime(newest.run.at)}${
-            test.lanes.length > 1
-              ? `, ${
-                  failing.length
-                    ? `on ${laneNames(
-                        model,
-                        failing.map((result) => result.lane),
-                      )}`
-                    : `on ${plural(test.lanes.length, 'lane')}`
-                }`
-              : ''
-          }`,
+          [
+            fmtDateTime(newest.run.at),
+            ...(test.lanes.length <= 1
+              ? []
+              : failing.length
+                ? [
+                    ', on ',
+                    laneNames(
+                      model,
+                      failing.map((result) => result.lane),
+                    ),
+                  ]
+                : [`, on ${plural(test.lanes.length, 'lane')}`]),
+          ],
           { tone: failing.length ? 't-fail' : 't-pass' },
         ),
         stat(
@@ -1296,7 +1325,7 @@ export function viewTest(ui: Ui, id: string): Node[] {
           'Bar height is how long it took, colour is the result. Click a bar to open it.',
           test.lanes.map((lane) =>
             h('div', { cls: 'hist-row' }, [
-              h('b', { style: 'font-weight:600', text: laneOf(model, lane).short }),
+              h('b', { style: 'font-weight:600' }, [laneName(model, lane)]),
               chartBox(
                 56,
                 historyBars((test.history[lane] ?? []).slice(-90), laneOf(model, lane).short, (result) => go(resultHash(result))),
@@ -1334,7 +1363,7 @@ export function viewTest(ui: Ui, id: string): Node[] {
                       onclick: (event: Event) => event.stopPropagation(),
                     }),
                   ]),
-                  test.lanes.length > 1 ? h('td', { text: laneOf(model, result.lane).short }) : null,
+                  test.lanes.length > 1 ? h('td', {}, [laneName(model, result.lane)]) : null,
                   h('td', {}, [badge(result.status)]),
                   h(
                     'td',

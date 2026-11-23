@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 import os
 import socket
 import tempfile
@@ -120,6 +121,17 @@ class WriteTest(unittest.TestCase):
     def test_a_folder_that_cannot_be_written_raises_nothing(self):
         with tempfile.NamedTemporaryFile() as blocker:
             kit.write_result(os.path.join(blocker.name, "x", "y.jsonl"), {"name": "a test"})
+
+    def test_a_line_carries_the_browser_and_platform_the_suite_names_and_nothing_of_them_when_it_names_none(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "w.jsonl")
+            kit.write_result(path, {"name": "named"}, {"Q6_REPORT_PLATFORM": "android", "Q6_REPORT_BROWSER": ""})
+            kit.write_result(path, {"name": "plain"}, {})
+            with open(path, encoding="utf-8") as stream:
+                named, plain = [json.loads(line) for line in stream]
+        self.assertEqual(named["platform"], "android")
+        self.assertNotIn("browser", named)
+        self.assertNotIn("platform", plain)
 
 
 class AttachTest(unittest.TestCase):

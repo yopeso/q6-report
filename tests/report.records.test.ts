@@ -10,6 +10,8 @@ import { ciContext } from '../src/context.ts';
 import { clearStaleStaging, mergeWorkers, recordRun, stagingDir } from '../src/finish.ts';
 import {
   appendRun,
+  DEBUG_RUN_LIMIT,
+  DEBUG_SHOT_RUNS,
   historyFile,
   keepAttachments,
   keepImages,
@@ -510,6 +512,127 @@ test('Recording a narrowed run leaves the history and the page of full runs exac
   assert.deepEqual(readFileSync(history), historyBefore);
   assert.deepEqual(readFileSync(page), pageBefore);
   assert.equal(readDebugHistory(path.join(reportsDir, 'history'), 'p').length, 1);
+});
+
+const WRONG = 'Expected "X" to read "1" but it read "2"';
+const trialRun = (id: string, results: ResultRecord[], overrides: Partial<RunRecord> = {}): RunRecord => ({
+  ...aRun(id, results),
+  isFull: false,
+  narrowedTo: '@smoke',
+  ...overrides,
+});
+const pageOf = (reportsDir: string, name: string) => pageData(readFileSync(path.join(reportsDir, 'report', `${name}.html`), 'utf8'));
+
+test("A trial run's page numbers its own runs, sees the test's real history, and leaves the trends to the full runs", async () => {
+  const reportsDir = tempDir();
+  await recording(reportsDir, aRun('full-1'));
+  await recording(reportsDir, trialRun('debug-1', [aResult('a', { status: 'failed', error: WRONG })]));
+  const page = pageOf(reportsDir, 'p-debug');
+  assert.equal(page.isDebug, true);
+  assert.equal(page.mainReport, 'p.html');
+  const model = buildModel(page);
+  assert.equal(model.debugRuns.at(-1)!.n, 1, 'Its numbers are its own');
+  assert.equal(model.debugRuns.at(-1)!.results[0]!.prev?.status, 'passed', "It still sees the test's real history");
+  assert.deepEqual(
+    model.trendRuns.map((run) => run.n),
+    [1],
+    'Trends stay with the full runs',
+  );
+  assert.ok(readFileSync(path.join(reportsDir, 'report', 'p-debug.md'), 'utf8').startsWith('## p, trial run: 1 of 1 result failed'));
+});
+
+test('The next full run compares with the last full run, whatever debugging happened between them', async () => {
+  const reportsDir = tempDir();
+  const failing = aResult('a', { status: 'failed', error: WRONG });
+  await recording(reportsDir, aRun('f1', [failing]));
+  await recording(reportsDir, trialRun('d1', [aResult('a')]));
+  await recording(reportsDir, aRun('f2', [failing]));
+  const model = buildModel(pageOf(reportsDir, 'p'));
+  assert.deepEqual(
+    model.runs.map((run) => run.n),
+    [1, 2],
+    'The trial run took no number and no slot',
+  );
+  assert.equal(failingStretch(model.runs[1]!.results[0]!).runs, 2, 'Still failing, not new');
+});
+
+test('Trial runs keep their own short history, cost full runs nothing, and keep their screenshots only briefly', async () => {
+  const reportsDir = tempDir();
+  const historyDir = path.join(reportsDir, 'history');
+  writeFileSync(path.join(reportsDir, 'failure-x.png'), PNG);
+  // Recording rewrites a result's image path to where the history keeps it, so each run gets a result of its own.
+  const shot = () => aResult('a', imageAt('failure-x.png'));
+  for (let i = 0; i < SHOT_RUNS; i++) await recording(reportsDir, aRun(`f${i}`, [shot()]));
+  for (let i = 0; i < DEBUG_RUN_LIMIT + 2; i++) await recording(reportsDir, trialRun(`d${i}`, [shot()]));
+  const debug = readDebugHistory(historyDir, 'p');
+  assert.equal(debug.length, DEBUG_RUN_LIMIT);
+  assert.equal(debug[0]!.runNumber, 3);
+  assert.equal(readHistory(historyDir, 'p').length, SHOT_RUNS);
+  const kept = readdirSync(path.join(historyDir, 'p', 'screenshots'));
+  assert.equal(kept.length, SHOT_RUNS + DEBUG_SHOT_RUNS);
+  assert.ok(kept.includes('f0') && kept.includes('d11') && kept.includes('d9') && !kept.includes('d8'));
+  const page = pageOf(reportsDir, 'p-debug');
+  assert.equal(buildModel(page).debugRuns.length, DEBUG_RUN_LIMIT);
+  assert.equal(page.shots['d11/1.png'], PNG.toString('base64'));
+  assert.equal(page.shots['d8/1.png'], undefined);
+});
+
+test('The next full run keeps the screenshots of trial runs, which it does not own', async () => {
+  const reportsDir = tempDir();
+  writeFileSync(path.join(reportsDir, 'failure-x.png'), PNG);
+  await recording(reportsDir, trialRun('d1', [aResult('a', imageAt('failure-x.png'))]));
+  await recording(reportsDir, aRun('f1'));
+  assert.ok(existsSync(path.join(reportsDir, 'history', 'p', 'screenshots', 'd1', '1.png')));
+});
+
+test('Each trial run compares with the one before it, and full runs read as if debugging never happened', async () => {
+  const reportsDir = tempDir();
+  const bad = aResult('a', { status: 'failed', error: WRONG });
+  await recording(reportsDir, aRun('f1', [bad]));
+  for (const [id, result] of [
+    ['d1', bad],
+    ['d2', bad],
+    ['d3', aResult('a')],
+  ] as const)
+    await recording(reportsDir, trialRun(id, [result]));
+  const model = buildModel(pageOf(reportsDir, 'p-debug'));
+  const [first, second, third] = model.debugRuns.map((run) => run.results[0]!);
+  assert.equal(failingStretch(second!).runs, 3, 'The full run and two attempts');
+  assert.equal(third!.prev, second);
+  assert.equal(third!.category, undefined);
+  assert.equal(second!.category, 'wrong', 'Retrying is what debugging is, so it is never called flaky');
+  assert.equal(first!.prev, model.runs[0]!.results[0]);
+  assert.equal(model.runs[0]!.results[0]!.next, undefined, 'Nothing points from a full run to an attempt');
+});
+
+test('Trial lanes recorded under one batch are one attempt, and a project with no full run still gets its page', async () => {
+  const reportsDir = tempDir();
+  await recording(reportsDir, trialRun('d1', [aResult('a')], { batch: 'all-1', lane: 'web' }));
+  const url = await recording(reportsDir, trialRun('d2', [aResult('a')], { batch: 'all-1', lane: 'ios' }));
+  assert.ok(url.endsWith('p-debug.html'));
+  const page = pageOf(reportsDir, 'p-debug');
+  const model = buildModel(page);
+  assert.equal(model.debugRuns.length, 1);
+  assert.deepEqual(model.debugRuns[0]!.lanes, ['web', 'ios']);
+  assert.equal(page.mainReport, undefined);
+  assert.ok(!existsSync(path.join(reportsDir, 'report', 'p.html')));
+  assert.deepEqual(readHistory(path.join(reportsDir, 'history'), 'p'), []);
+});
+
+test('A record naming a browser or platform the page has no logo for is kept as it came, and the caller is told which', async () => {
+  const reportsDir = tempDir();
+  const warned: string[] = [];
+  const record: RunRecord = { ...aRun('a'), lane: 'shop', browser: 'Chrome' as never, platform: 'tv' as never };
+  await recording(reportsDir, record, (message) => warned.push(message));
+  assert.deepEqual(warned, [
+    'The lane shop names its browser "Chrome", and the report knows chrome, chromium, edge, firefox, safari, webkit, so it draws the lane without a logo.',
+    'The lane shop names its platform "tv", and the report knows web, android, ios, so it draws the lane without a logo.',
+  ]);
+  const kept = readHistory(path.join(reportsDir, 'history'), 'p')[0]!;
+  assert.deepEqual([kept.browser, kept.platform], ['Chrome', 'tv']);
+  const quiet: string[] = [];
+  await recording(tempDir(), { ...aRun('b'), browser: 'firefox', platform: 'web' }, (message) => quiet.push(message));
+  assert.deepEqual(quiet, [], 'A name the page knows says nothing');
 });
 
 test('A history line that had to be skipped reaches the caller, naming its project and line', async () => {
