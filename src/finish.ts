@@ -16,7 +16,16 @@ import {
 } from './history.ts';
 import { isFullRun, runContext } from './context.ts';
 import { reportFolder, runRoot } from './kit.ts';
-import { HISTORY_VERSION, LANE_BROWSERS, LANE_PLATFORMS, type ResultRecord, type RunRecord, safeFolderName } from './model.ts';
+import {
+  HISTORY_VERSION,
+  LANE_BROWSERS,
+  LANE_PLATFORMS,
+  type LaneBrowser,
+  type LanePlatform,
+  type ResultRecord,
+  type RunRecord,
+  safeFolderName,
+} from './model.ts';
 import { reportUrl, writeReport } from './render.ts';
 import { parseResultLine } from './result-line.ts';
 
@@ -44,6 +53,15 @@ export interface MergedResults {
   /** When the first test began and the last one ended, from the lines themselves, so a folder that travelled still knows. */
   startedAt?: string;
   finishedAt?: string;
+  /** What every line says the lane ran in and on; unset when a line says nothing or two lines disagree. */
+  browser?: string;
+  platform?: string;
+}
+
+/** The one value every line gives, or nothing: a lane that ran in two browsers has no one browser to draw. */
+function agreed(values: (string | undefined)[]): string | undefined {
+  const [first] = values;
+  return first !== undefined && values.every((value) => value === first) ? first : undefined;
 }
 
 /** Reads every worker's results, in a stable order; a scenario outline repeats its name, so its rows are numbered. */
@@ -52,6 +70,8 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
   const files = readdirSync(dir).filter((file) => file.endsWith('.jsonl'));
   let started = Infinity;
   let finished = -Infinity;
+  const browsers: (string | undefined)[] = [];
+  const platforms: (string | undefined)[] = [];
   const results = files
     .flatMap((file) =>
       readFileSync(path.join(dir, file), 'utf8')
@@ -69,6 +89,8 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
             started = Math.min(started, end - parsed.result.ms);
             finished = Math.max(finished, end);
           }
+          browsers.push(parsed.browser);
+          platforms.push(parsed.platform);
           return [parsed.result];
         }),
     )
@@ -79,10 +101,14 @@ export function mergeWorkers(dir: string, warn: (message: string) => void = () =
     seen.set(result.test, count);
     if (count > 1) result.test = `${result.test} #${count}`;
   }
+  const browser = agreed(browsers);
+  const platform = agreed(platforms);
   return {
     results,
     workers: files.length,
     ...(Number.isFinite(started) ? { startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString() } : {}),
+    ...(browser ? { browser } : {}),
+    ...(platform ? { platform } : {}),
   };
 }
 
@@ -205,7 +231,7 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
   const batch = env.Q6_BATCH ?? context.batch ?? newRunId();
   const now = new Date().toISOString();
   let url = '';
-  for (const { lane, folder, results, startedAt, finishedAt } of filled) {
+  for (const { lane, folder, results, startedAt, finishedAt, browser, platform } of filled) {
     const narrowedTo = env.Q6_RUN_NARROWED ?? laneNarrowedTo(folder);
     url = await recordRun({
       record: {
@@ -216,6 +242,9 @@ export async function finishLanes(options: FinishLanesOptions = {}): Promise<str
         project,
         lane,
         laneLabel: lane,
+        // Kept as the lines wrote them, so recordRun warns about a browser or platform the report does not know.
+        ...(browser ? { browser: browser as LaneBrowser } : {}),
+        ...(platform ? { platform: platform as LanePlatform } : {}),
         narrowedTo,
         isFull: isFullRun(env, Boolean(narrowedTo)),
         startedAt: startedAt ?? now,

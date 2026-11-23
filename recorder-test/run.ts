@@ -44,6 +44,8 @@ interface Suite {
   command(selection: 'all' | 'passing'): { file: string; args: string[]; env: NodeJS.ProcessEnv };
   /** Where a person finds what the recorder said during a run, beyond the run's own output. */
   recorderSaid(output: string): string;
+  /** What the suite's lane must be recorded as running in and on, which the page draws as its icon. */
+  lane: { browser?: string; platform?: string };
 }
 
 // A run must look like a laptop's whatever machine this check is on, or a pull request's CI would change what it proves.
@@ -204,10 +206,12 @@ const behave: Suite = {
       file: venvPython,
       args: ['-m', 'behave', '--tags=not @skip', ...(selection === 'passing' ? ['--name', 'Adds an item'] : [])],
       // This test finishes each run itself, with the command it packed, so the recorder must not finish it first.
-      env: { ...NO_BYTECODE, Q6_REPORT_FINISH: 'off' },
+      // The suite drives no screen, so it names its lane as a phone suite would, to prove the setting reaches the record.
+      env: { ...NO_BYTECODE, Q6_REPORT_FINISH: 'off', Q6_REPORT_PLATFORM: 'android' },
     };
   },
   recorderSaid: (output) => output,
+  lane: { platform: 'android' },
 };
 
 const junit5: Suite = {
@@ -246,7 +250,8 @@ const junit5: Suite = {
         ...(published ? ['-PfromMavenCentral'] : []),
         ...(selection === 'passing' ? ['--tests', 'CartTest.adds an item'] : []),
       ],
-      env: {},
+      // Its tests drive a headless Chrome.
+      env: { Q6_REPORT_BROWSER: 'chrome', Q6_REPORT_PLATFORM: 'web' },
     };
   },
   // Gradle keeps what a test process prints in its test results, and not on its own output.
@@ -257,6 +262,7 @@ const junit5: Suite = {
       .map((file) => readFileSync(path.join(results, file), 'utf8'))
       .join('\n');
   },
+  lane: { browser: 'chrome', platform: 'web' },
 };
 
 const playwrightTest: Suite = {
@@ -293,6 +299,8 @@ const playwrightTest: Suite = {
     };
   },
   recorderSaid: (output) => output,
+  // Nothing names it: the reporter reads Chrome from the config's channel.
+  lane: { browser: 'chrome', platform: 'web' },
 };
 
 const SUITES = [behave, junit5, playwrightTest];
@@ -531,6 +539,14 @@ async function check(suite: Suite, shouldPrint: boolean): Promise<void> {
     say(`${actual.length} results are exactly the ones expected, each sorted as expected`);
     assert.equal(files.length, expected.workers, 'Each worker writes a file of its own');
     say(`${files.length} ${files.length === 1 ? 'worker wrote its file' : 'workers wrote their own files'}`);
+    const laneRun = data.records.find((record) => record.lane === suite.name);
+    assert.deepEqual(
+      { browser: laneRun?.browser, platform: laneRun?.platform },
+      { browser: suite.lane.browser, platform: suite.lane.platform },
+    );
+    say(
+      `its lane is recorded as ${[suite.lane.browser, suite.lane.platform].filter(Boolean).join(' on ')}, which the page draws as its icon`,
+    );
     assert.deepEqual(causes, expected.causes);
     say(`the page draws ${causes.length} causes, the ones expected`);
     const images = actual.filter((line) => line.image).length;

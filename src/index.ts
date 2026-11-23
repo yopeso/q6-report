@@ -4,7 +4,18 @@ export { isFullRun, runContext } from './context.ts';
 export type { Copy } from './copy.ts';
 export { clearStaleStaging, finishLanes, mergeWorkers, newRunId, recordRun, type RecordRunOptions, stagingDir } from './finish.ts';
 export { debugHistoryFile, listDebugProjects, listProjects } from './history.ts';
-export { atOf, keepImage, kindOfError, knownBugOf, laneFolder, reportFolder, rerunOf, writeResult } from './kit.ts';
+export {
+  atOf,
+  keepImage,
+  kindOfError,
+  knownBugOf,
+  laneFolder,
+  type LaneKind,
+  laneKindOf,
+  reportFolder,
+  rerunOf,
+  writeResult,
+} from './kit.ts';
 export {
   type Attachment,
   type FailureKind,

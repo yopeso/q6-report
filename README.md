@@ -246,6 +246,7 @@ export default defineConfig({
 
 Both options are optional: `folder` is where results, images and attachments go, the lane's folder `<dir>/.run/playwright-test/` without it, and `file` is the results file, `playwright-test-<pid>.jsonl` in that folder without it.
 `Q6_REPORT_LANE` renames the lane, e.g: one per Playwright project.
+Each test's browser comes from its project, as Playwright picks it: `browserName`, else its device's, else Chromium, with a `chrome` or `msedge` channel making it Chrome or Edge; a lane whose tests all ran in one browser shows its icon.
 
 A test is recorded once, at the attempt that decides it, with `attempts` set to the retries it took.
 Its `test` is the spec's path under the config's `rootDir`, then its describes and title joined with ` > `, and a Playwright project that has a name puts it in front, so two browsers running one spec keep two histories.
@@ -274,6 +275,8 @@ Every recorder reads the same ones, and none is needed.
 |---|---|---|
 | `Q6_REPORT_DIR` | the folder a run's records, history and page go in | `q6-report` in the folder the suite runs from |
 | `Q6_REPORT_LANE` | names the lane, e.g: `chrome` | the framework's name |
+| `Q6_REPORT_BROWSER` | the browser the lane runs in, one of `chrome`, `chromium`, `edge`, `firefox`, `safari` or `webkit`, which the page draws as its icon | the Playwright Test reporter reads it from the project, and the others leave it unset |
+| `Q6_REPORT_PLATFORM` | what the lane runs on, `web`, `android` or `ios`, e.g: `android` for an Appium suite on an Android phone | `web` beside a browser the Playwright Test reporter read, and unset otherwise |
 | `Q6_REPORT_BUG_TAG` | a pattern for the tag marking a known bug; its first group is the bug, or the whole match | a tag starting `@bug-` or `@bug:` |
 | `Q6_REPORT_RERUN` | the command that runs a test again, with `{name}` and `{file}` filled in and quoted | the page shows no command |
 | `Q6_REPORT_FINISH` | `off` leaves writing the page to `q6-report finish`, e.g: for a suite that runs several behave processes at once | the behave recorder writes the page when behave ends, except in a CI |
@@ -318,6 +321,7 @@ One JSON object per line, in any file ending `.jsonl` under `<dir>/.run/<lane>/`
 ```
 
 `test`, and a `status` of `passed`, `failed` or `skipped`, are all a line must hold.
+`browser` and `platform` say what the lane ran in and on, and a lane takes the ones every one of its lines gives, so a lane that ran in two browsers has no icon.
 `finishedAt` less `ms` is how a run knows when it ran, once its folder has travelled.
 An image or attachment path is relative to the lane's folder, and one that leaves it is dropped with a warning.
 A `stored` path in a line is never taken, as where the report keeps a file is the report's to say.
@@ -369,7 +373,7 @@ Fields a framework cannot fill stay unset, and the page hides what depends on th
 | `attachments` | files a test attached, each with its `name`, the `path` its recorder kept it at, the `attempt` that attached it on a test that ran more than once, and once the run is recorded, where the report keeps it as `stored` |
 | `rerun`, `rerunScope` | the command that runs it again, and what else that command runs: a tag, or empty for the whole lane |
 | `laneShort` | the lane's name where space is short, on the run |
-| `browser`, `platform` | the browser the lane ran in, `chrome`, `edge`, `firefox`, `safari` or `webkit`, and what it ran on, `web`, `android` or `ios`, on the run; the page draws the browser's logo before the lane's name, or the phone's when it names no browser, and the lane's newest run decides; any other value is kept, drawn with no logo and warned about |
+| `browser`, `platform` | the browser the lane ran in, `chrome`, `chromium`, `edge`, `firefox`, `safari` or `webkit`, and what it ran on, `web`, `android` or `ios`, on the run; the page draws the browser's logo before the lane's name, or the phone's when it names no browser, and the lane's newest run decides; any other value is kept, drawn with no logo and warned about |
 
 A recorder that knows its run was not the whole suite writes what it was instead into `narrowed.txt` in its lane's folder, e.g: the behave recorder after a cancel, and `q6-report finish` records that lane as a trial run unless `Q6_RUN_NARROWED` says otherwise.
 
@@ -398,14 +402,14 @@ Each is one colour and takes the text's, so it reads on both themes.
 
 | Logo | File | Bootstrap icon |
 |---|---|---|
-| Chrome | `chrome.svg` | `browser-chrome` |
+| Chrome, and Chromium | `chrome.svg` | `browser-chrome` |
 | Edge | `edge.svg` | `browser-edge` |
 | Firefox | `firefox.svg` | `browser-firefox` |
 | Safari, and WebKit | `safari.svg` | `browser-safari` |
 | Android | `android.svg` | `android2` |
 | Apple, for iOS | `apple.svg` | `apple` |
 
-No icon set draws WebKit's own logo, so a WebKit lane takes Safari's, and its name beside it says WebKit.
+No icon set draws Chromium's or WebKit's own logo, so their lanes take Chrome's and Safari's, and each lane's name says which it is.
 Bootstrap Icons is under the MIT licence, whose text is `src/client/lane-marks/Bootstrap-Icons-MIT.txt` and travels with every copy of the package in `dist`.
 The logos stay their owners' trademarks, so the page's footer names each one the page draws, and carries the line Google asks for wherever the Android robot is drawn.
 
@@ -454,6 +458,7 @@ behave
   ok: its tools are here, and its recorder is installed from its wheel
   ok: 21 results are exactly the ones expected, each sorted as expected
   ok: 1 worker wrote its file
+  ok: its lane is recorded as android, which the page draws as its icon
   ok: the page draws 11 causes, the ones expected
   ok: the page holds all 2 kept images
   ok: the page links to all 4 attachments in the folder beside it, and holds the ones that are text
@@ -465,6 +470,7 @@ junit5
   ok: its tools are here, and its recorder is installed from its Maven publication
   ok: 33 results are exactly the ones expected, each sorted as expected
   ok: 2 workers wrote their own files
+  ok: its lane is recorded as chrome on web, which the page draws as its icon
   ok: the page draws 18 causes, the ones expected
   ok: the page holds all 15 kept images
   ok: the page links to all 4 attachments in the folder beside it, and holds the ones that are text
@@ -476,6 +482,7 @@ playwright-test
   ok: its tools are here, and its recorder is installed from its npm package
   ok: 9 results are exactly the ones expected, each sorted as expected
   ok: 1 worker wrote its file
+  ok: its lane is recorded as chrome on web, which the page draws as its icon
   ok: the page draws 4 causes, the ones expected
   ok: the page holds all 1 kept images
   ok: the page links to all 21 attachments in the folder beside it, and holds the ones that are text

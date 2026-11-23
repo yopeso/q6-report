@@ -2,7 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { splitError } from '../src/split-error.ts';
-import { isFinalAttempt, kindOfPlaywrightError, type PwAttachment, type PwResult, type PwTest, recordOf } from '../src/playwright.ts';
+import {
+  browserOfProject,
+  isFinalAttempt,
+  kindOfPlaywrightError,
+  laneKindOfTest,
+  type PwAttachment,
+  type PwResult,
+  type PwTest,
+  type PwUse,
+  recordOf,
+} from '../src/playwright.ts';
 
 const CWD = '/work/shop';
 const ESC = String.fromCharCode(27);
@@ -48,9 +58,9 @@ const result = (extra: Partial<PwResult> = {}): PwResult => ({
   ...extra,
 });
 
-function testOf(results: PwResult[], extra: Partial<PwTest> = {}): PwTest {
+function testOf(results: PwResult[], extra: Partial<PwTest> = {}, use: PwUse = {}): PwTest {
   const root = { title: '', type: 'root' };
-  const project = { title: 'chrome', type: 'project', parent: root, project: () => ({ name: '' }) };
+  const project = { title: 'chrome', type: 'project', parent: root, project: () => ({ name: '', use }) };
   const file = { title: 'cart.spec.ts', type: 'file', parent: project };
   const describe = { title: 'Cart', type: 'describe', parent: file };
   return { title: 'totals', location: { file: `${CWD}/tests/cart.spec.ts` }, parent: describe, tags: [], retries: 1, results, ...extra };
@@ -62,6 +72,31 @@ const keep = (attachment: PwAttachment, what: 'image' | 'attachment', name: stri
   return `${what === 'image' ? 'images' : 'attachments'}/${attachment.path ?? attachment.name}`;
 };
 const options = { rootDir: `${CWD}/tests`, cwd: CWD, keep };
+
+test('A project runs the browser Playwright picks: its browserName, else its device, else Chromium, with a channel naming the brand', () => {
+  const cases: [PwUse, string | undefined][] = [
+    [{}, 'chromium'],
+    [{ channel: 'chrome' }, 'chrome'],
+    [{ channel: 'chrome-beta' }, 'chrome'],
+    [{ channel: 'msedge' }, 'edge'],
+    [{ channel: 'msedge-dev' }, 'edge'],
+    [{ channel: 'chromium' }, 'chromium'],
+    [{ browserName: 'firefox' }, 'firefox'],
+    [{ browserName: 'webkit' }, 'webkit'],
+    [{ defaultBrowserType: 'webkit' }, 'webkit'],
+    [{ browserName: 'firefox', defaultBrowserType: 'webkit' }, 'firefox'],
+    [{ browserName: 'firefox', channel: 'chrome' }, 'firefox'],
+    [{ browserName: 'opera' }, undefined],
+  ];
+  for (const [use, browser] of cases) assert.equal(browserOfProject(use), browser, JSON.stringify(use));
+});
+
+test('A test runs on the web in its project browser, unless the suite names the browser and platform itself', () => {
+  const inFirefox = testOf([result()], {}, { browserName: 'firefox' });
+  assert.deepEqual(laneKindOfTest(inFirefox, {}), { browser: 'firefox', platform: 'web' });
+  assert.deepEqual(laneKindOfTest(inFirefox, { Q6_REPORT_BROWSER: 'edge' }), { browser: 'edge', platform: 'web' });
+  assert.deepEqual(laneKindOfTest(testOf([result()], {}, { browserName: 'opera' }), {}), {});
+});
 
 test('A test is named for its file under the root, its describes and its title, and located from the working folder', () => {
   const record = recordOf(testOf([result()]), result(), options);

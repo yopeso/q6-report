@@ -12,7 +12,8 @@ import {
 const RESULT_STATUSES: readonly ResultStatus[] = ['passed', 'failed', 'skipped'];
 const STEP_STATUSES: readonly StepStatus[] = ['passed', 'failed', 'notRun'];
 
-export type ParsedLine = { result: ResultRecord; finishedAt?: string } | { why: string };
+/** `browser` and `platform` say what the lane ran in or on, and are kept as written so finishing can warn about one it does not know. */
+export type ParsedLine = { result: ResultRecord; finishedAt?: string; browser?: string; platform?: string } | { why: string };
 
 const isText = (value: unknown): value is string => typeof value === 'string';
 const optionalText = <K extends string>(key: K, value: unknown): Partial<Record<K, string>> =>
@@ -87,5 +88,10 @@ export function parseResultLine(line: string): ParsedLine {
     ...optionalText('rerun', raw.rerun),
     ...(isText(raw.rerunScope) ? { rerunScope: raw.rerunScope } : {}),
   };
-  return { result, ...(isText(raw.finishedAt) && !Number.isNaN(Date.parse(raw.finishedAt)) ? { finishedAt: raw.finishedAt } : {}) };
+  return {
+    result,
+    ...(isText(raw.finishedAt) && !Number.isNaN(Date.parse(raw.finishedAt)) ? { finishedAt: raw.finishedAt } : {}),
+    ...optionalText('browser', raw.browser),
+    ...optionalText('platform', raw.platform),
+  };
 }

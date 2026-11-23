@@ -3,6 +3,8 @@
   "exitCode": 1,
   "results": [
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Cart > adds an item",
       "name": "adds an item",
       "group": "Cart",
@@ -32,6 +34,8 @@
       ]
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Cart > applies a coupon",
       "name": "applies a coupon",
       "group": "Cart",
@@ -43,6 +47,8 @@
       "steps": []
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Cart > survives a flaky page",
       "name": "survives a flaky page",
       "group": "Cart",
@@ -72,6 +78,8 @@
       "category": "flaky"
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Cart > totals the cart",
       "name": "totals the cart",
       "group": "Cart",
@@ -127,6 +135,8 @@
       "category": "wrong"
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Cart > waits for a service that never answers",
       "name": "waits for a service that never answers",
       "group": "Cart",
@@ -163,6 +173,8 @@
       "category": "timeout"
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::known bug @bug-42",
       "name": "known bug @bug-42",
       "group": "",
@@ -201,6 +213,8 @@
       "category": "known"
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Tags > is tagged by an option",
       "name": "is tagged by an option",
       "group": "Tags",
@@ -212,6 +226,8 @@
       "steps": []
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::Tags > is tagged by its title @fast",
       "name": "is tagged by its title @fast",
       "group": "Tags",
@@ -223,6 +239,8 @@
       "steps": []
     },
     {
+      "browser": "chrome",
+      "platform": "web",
       "test": "shop.spec.ts::throws a plain error outside every step",
       "name": "throws a plain error outside every step",
       "group": "",

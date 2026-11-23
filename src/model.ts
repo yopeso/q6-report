@@ -11,8 +11,11 @@ export type StepStatus = 'passed' | 'failed' | 'notRun';
 export const FAILURE_KINDS = ['check', 'error', 'timeout', 'env', 'missing'] as const;
 export type FailureKind = (typeof FAILURE_KINDS)[number];
 export type ImageType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
-/** The browsers a lane can name, each drawn with its logo; WebKit is the engine's own build, which is not Safari. */
-export const LANE_BROWSERS = ['chrome', 'edge', 'firefox', 'safari', 'webkit'] as const;
+/**
+ * The browsers a lane can name, each drawn with its logo. Chromium and WebKit are the engines' own builds, which are not
+ * Chrome and Safari, and Chromium is what Playwright runs unless a suite names another.
+ */
+export const LANE_BROWSERS = ['chrome', 'chromium', 'edge', 'firefox', 'safari', 'webkit'] as const;
 export type LaneBrowser = (typeof LANE_BROWSERS)[number];
 /** What a lane can run on; a phone lane is drawn with its platform's logo. */
 export const LANE_PLATFORMS = ['web', 'android', 'ios'] as const;

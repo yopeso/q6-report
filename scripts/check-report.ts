@@ -176,6 +176,7 @@ const shopLook = {
 /** A lane in each browser and on each phone the page has a logo for. Their labels name no browser, so any other text that does is a lane named without its logo. */
 const MARKED_LANES = [
   { lane: 'shop-web', short: 'Web', browser: 'chrome', platform: 'web', mark: 'chrome' },
+  { lane: 'shop-web-chromium', short: 'Chromium', browser: 'chromium', platform: 'web', mark: 'chromium' },
   { lane: 'shop-web-edge', short: 'Edge', browser: 'edge', platform: 'web', mark: 'edge' },
   { lane: 'shop-web-firefox', short: 'Firefox', browser: 'firefox', platform: 'web', mark: 'firefox' },
   { lane: 'shop-web-safari', short: 'Safari', browser: 'safari', platform: 'web', mark: 'safari' },
@@ -183,9 +184,10 @@ const MARKED_LANES = [
   { lane: 'shop-android', short: 'Android', platform: 'android', mark: 'android' },
   { lane: 'shop-ios', short: 'iOS', platform: 'ios', mark: 'ios' },
 ] as const;
-/** The Bootstrap Icons file each mark is drawn from; WebKit has no icon of its own, so its lane takes Safari's. */
+/** The Bootstrap Icons file each mark is drawn from; Chromium and WebKit have none of their own, so they take Chrome's and Safari's. */
 const MARK_FILES: Record<string, string> = {
   chrome: 'chrome.svg',
+  chromium: 'chrome.svg',
   edge: 'edge.svg',
   firefox: 'firefox.svg',
   safari: 'safari.svg',

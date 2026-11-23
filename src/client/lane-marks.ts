@@ -20,9 +20,10 @@ interface Mark {
   owner: string;
 }
 
-// No icon set draws WebKit's own logo, so a WebKit lane takes Safari's, and its name beside it still says WebKit.
+// No icon set draws Chromium's or WebKit's own logo, so their lanes take Chrome's and Safari's, and each lane's name says which.
 const MARKS: Record<LaneMark, Mark> = {
   chrome: { icon: chrome, names: ['Chrome'], owner: GOOGLE },
+  chromium: { icon: chrome, names: ['Chrome'], owner: GOOGLE },
   edge: { icon: edge, names: ['Microsoft Edge'], owner: 'the Microsoft group of companies' },
   firefox: { icon: firefox, names: ['Firefox', 'the Firefox logo'], owner: 'Mozilla.org in the U.S. and other countries' },
   safari: { icon: safari, names: ['Safari'], owner: APPLE },

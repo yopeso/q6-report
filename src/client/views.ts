@@ -232,7 +232,7 @@ function clusterRow(model: Model, cluster: Cluster, hasThumbs: boolean): HTMLEle
         model.lanes.length > 1
           ? isOnlyHere
             ? h('span', { cls: 'chip is-only' }, ['Only on ', laneName(model, cluster.lanes[0]!)])
-            : h('span', { cls: 'chip' }, [laneNames(model, cluster.lanes)])
+            : h('span', { cls: 'chip is-lanes' }, [laneNames(model, cluster.lanes)])
           : null,
         catLabel(cluster.category),
         cluster.bug ? h('span', { cls: 'chip' }, [icon('bug'), cluster.bug]) : null,

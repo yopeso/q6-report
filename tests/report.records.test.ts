@@ -518,7 +518,7 @@ test('A record naming a browser or platform the page has no logo for is kept as 
   const record: RunRecord = { ...aRun('a'), lane: 'shop', browser: 'Chrome' as never, platform: 'tv' as never };
   await recording(reportsDir, record, (message) => warned.push(message));
   assert.deepEqual(warned, [
-    'The lane shop names its browser "Chrome", and the report knows chrome, edge, firefox, safari, webkit, so it draws the lane without a logo.',
+    'The lane shop names its browser "Chrome", and the report knows chrome, chromium, edge, firefox, safari, webkit, so it draws the lane without a logo.',
     'The lane shop names its platform "tv", and the report knows web, android, ios, so it draws the lane without a logo.',
   ]);
   const kept = readHistory(path.join(reportsDir, 'history'), 'p')[0]!;

@@ -20,11 +20,23 @@ export const runRoot = (dir: string): string => path.join(dir, '.run');
 export const laneFolder = (framework: string, env: Env = process.env): string =>
   path.join(runRoot(reportFolder(env)), safeFolderName(env.Q6_REPORT_LANE || framework));
 
+/** What a lane ran in and on, which the page draws as its icon. */
+export interface LaneKind {
+  browser?: string;
+  platform?: string;
+}
+
+/** A lane's browser and platform as a suite names them, in Q6_REPORT_BROWSER and Q6_REPORT_PLATFORM. */
+export const laneKindOf = (env: Env = process.env): LaneKind => ({
+  ...(env.Q6_REPORT_BROWSER ? { browser: env.Q6_REPORT_BROWSER } : {}),
+  ...(env.Q6_REPORT_PLATFORM ? { platform: env.Q6_REPORT_PLATFORM } : {}),
+});
+
 /** Adds one line to a worker's own file, so parallel workers never share one. */
-export function writeResult(file: string, result: ResultRecord, warn: Warn = console.error): void {
+export function writeResult(file: string, result: ResultRecord, warn: Warn = console.error, lane: LaneKind = laneKindOf()): void {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    appendFileSync(file, `${JSON.stringify({ v: HISTORY_VERSION, finishedAt: new Date().toISOString(), ...result })}\n`);
+    appendFileSync(file, `${JSON.stringify({ v: HISTORY_VERSION, finishedAt: new Date().toISOString(), ...lane, ...result })}\n`);
   } catch (error) {
     warn(`The report could not record "${result.name}": ${String(error)}`);
   }

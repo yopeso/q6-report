@@ -566,6 +566,15 @@ svg {
   background: var(--flaky-soft);
   color: var(--flaky-ink);
 }
+/* A chip naming every lane a cause failed on wraps between the names on a phone, rather than widen the page; one line stays 21px tall. */
+.chip.is-lanes {
+  height: auto;
+  min-height: 21px;
+  max-width: 100%;
+  padding: 2px 7px;
+  line-height: 17px;
+  white-space: normal;
+}
 .cat {
   display: inline-flex;
   align-items: center;

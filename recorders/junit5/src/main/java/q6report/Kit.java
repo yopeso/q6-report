@@ -50,12 +50,19 @@ final class Kit {
     return value == null || value.isEmpty() ? fallback : value;
   }
 
+  private static void putIfSet(Map<String, Object> line, String key, String value) {
+    if (value != null && !value.isEmpty()) line.put(key, value);
+  }
+
   /** Adds one line to this process's own file, so parallel forks never share one. */
   static synchronized void write(Map<String, Object> result) throws IOException {
     Path folder = laneFolder();
     Files.createDirectories(folder);
     result.put("v", RECORD_VERSION);
     result.put("finishedAt", Instant.now().toString());
+    // What the lane ran in and on, as the suite names them, which the page draws as the lane's icon.
+    putIfSet(result, "browser", System.getenv("Q6_REPORT_BROWSER"));
+    putIfSet(result, "platform", System.getenv("Q6_REPORT_PLATFORM"));
     Path file = folder.resolve(FRAMEWORK + "-" + ProcessHandle.current().pid() + ".jsonl");
     Files.write(file, (json(result) + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
   }

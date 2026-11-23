@@ -9,7 +9,7 @@ import { gunzipSync } from 'node:zlib';
 import { ciContext, isFullRun } from '../src/context.ts';
 import { finishLanes, mergeWorkers } from '../src/finish.ts';
 import { readDebugHistory, readHistory } from '../src/history.ts';
-import { atOf, keepImage, kindOfError, knownBugOf, laneFolder, rerunOf, writeResult } from '../src/kit.ts';
+import { atOf, keepImage, kindOfError, knownBugOf, laneFolder, laneKindOf, rerunOf, writeResult } from '../src/kit.ts';
 import { HISTORY_VERSION, type ReportData, type ResultRecord } from '../src/model.ts';
 import { parseResultLine } from '../src/result-line.ts';
 import { splitError } from '../src/split-error.ts';
@@ -95,6 +95,20 @@ test('A line goes to its worker file with its version and when it finished, and 
   const said: string[] = [];
   assert.doesNotThrow(() => writeResult(path.join(blocker, 'w.jsonl'), passed('a'), (message) => said.push(message)));
   assert.match(said[0]!, /could not record "a"/);
+});
+
+test('A line carries the browser and platform its suite names, and nothing of them when it names none', () => {
+  assert.deepEqual(laneKindOf({ Q6_REPORT_BROWSER: 'firefox', Q6_REPORT_PLATFORM: 'web' }), { browser: 'firefox', platform: 'web' });
+  assert.deepEqual(laneKindOf({ Q6_REPORT_BROWSER: '', Q6_REPORT_PLATFORM: undefined }), {});
+  const file = path.join(tempDir(), 'w.jsonl');
+  writeResult(file, passed('a'), () => {}, { platform: 'android' });
+  writeResult(file, passed('b'), () => {}, {});
+  const [named, plain] = readFileSync(file, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+  assert.equal(named!.platform, 'android');
+  assert.ok(!('browser' in named!) && !('browser' in plain!) && !('platform' in plain!));
 });
 
 test('A kept image stays inside the lane folder whatever its name, and a missing one is told about', () => {
@@ -273,6 +287,36 @@ test('Finishing makes one run of every lane the recorders left, and clears them'
   assert.equal(records[0]!.batch, records[1]!.batch, 'One run of the report');
   assert.equal(records[0]!.runNumber, records[1]!.runNumber);
   assert.deepEqual(readdirSync(path.join(dir, '.run')), []);
+});
+
+test('A lane runs in the browser and on the platform every one of its lines names, and in none when they disagree', async () => {
+  const dir = tempDir();
+  const inFirefox = { ...passed('a'), browser: 'firefox', platform: 'web' };
+  writeLane(dir, 'firefox', [inFirefox, { ...passed('b'), browser: 'firefox', platform: 'web' }]);
+  writeLane(dir, 'mixed', [inFirefox, { ...passed('b'), browser: 'chromium', platform: 'web' }]);
+  writeLane(dir, 'partly', [inFirefox, passed('b')]);
+  writeLane(dir, 'phone', [{ ...passed('a'), platform: 'android' }]);
+  const said: string[] = [];
+  await finishLanes({ dir, project: 'shop', env: {}, cwd: dir, warn: (message) => said.push(message) });
+  const kinds = Object.fromEntries(
+    readHistory(path.join(dir, 'history'), 'shop').map((record) => [record.lane, [record.browser, record.platform]]),
+  );
+  assert.deepEqual(kinds, {
+    firefox: ['firefox', 'web'],
+    mixed: [undefined, 'web'],
+    partly: [undefined, undefined],
+    phone: [undefined, 'android'],
+  });
+  assert.deepEqual(said, []);
+});
+
+test('A browser the report does not know is kept as its lines wrote it, and told about', async () => {
+  const dir = tempDir();
+  writeLane(dir, 'chrome', [{ ...passed('a'), browser: 'Chrome' }]);
+  const said: string[] = [];
+  await finishLanes({ dir, project: 'shop', env: {}, cwd: dir, warn: (message) => said.push(message) });
+  assert.equal(readHistory(path.join(dir, 'history'), 'shop')[0]!.browser, 'Chrome');
+  assert.match(said.join('\n'), /The lane chrome names its browser "Chrome", and the report knows chrome, chromium, edge/);
 });
 
 test('A lane its recorder marked as cancelled goes to the trial page, and leaves the history as it was', async () => {

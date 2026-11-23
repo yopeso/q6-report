@@ -4,8 +4,8 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 
-import { atOf, keepImage, knownBugOf, laneFolder, rerunOf, writeResult } from './kit.ts';
-import type { Attachment, FailureKind, ImageType, ResultRecord, StepRecord } from './model.ts';
+import { atOf, keepImage, knownBugOf, laneFolder, type LaneKind, laneKindOf, rerunOf, writeResult } from './kit.ts';
+import type { Attachment, FailureKind, ImageType, LaneBrowser, ResultRecord, StepRecord } from './model.ts';
 import { splitError } from './split-error.ts';
 import { kindFromWords } from './wording.ts';
 
@@ -49,11 +49,18 @@ export interface PwResult {
   attachments: PwAttachment[];
 }
 
+/** The options of a project that say which browser it runs, with the config's own merged in, as a reporter is handed them. */
+export interface PwUse {
+  browserName?: string;
+  defaultBrowserType?: string;
+  channel?: string;
+}
+
 export interface PwSuite {
   title: string;
   type: string;
   parent?: PwSuite;
-  project?(): { name: string } | undefined;
+  project?(): { name: string; use?: PwUse } | undefined;
 }
 
 export interface PwTest {
@@ -115,6 +122,35 @@ function projectOf(test: PwTest): string {
     if (name) return name;
   }
   return '';
+}
+
+function useOf(test: PwTest): PwUse {
+  for (let suite: PwSuite | undefined = test.parent; suite; suite = suite.parent) {
+    const project = suite.project?.();
+    if (project) return project.use ?? {};
+  }
+  return {};
+}
+
+const isChannelOf = (channel: string | undefined, brand: string): boolean => channel === brand || Boolean(channel?.startsWith(`${brand}-`));
+
+/**
+ * The browser a project runs, as Playwright picks it: its browserName, else its device's defaultBrowserType, else
+ * Chromium; on Chromium a channel names the branded build, e.g: chrome-beta is Chrome and msedge is Edge.
+ */
+export function browserOfProject(use: PwUse): LaneBrowser | undefined {
+  const engine = use.browserName ?? use.defaultBrowserType ?? 'chromium';
+  if (engine === 'firefox' || engine === 'webkit') return engine;
+  if (engine !== 'chromium') return undefined;
+  if (isChannelOf(use.channel, 'chrome')) return 'chrome';
+  if (isChannelOf(use.channel, 'msedge')) return 'edge';
+  return 'chromium';
+}
+
+/** What a test's lane ran in, read from its project, unless the suite names it in Q6_REPORT_BROWSER and Q6_REPORT_PLATFORM. */
+export function laneKindOfTest(test: PwTest, env: Record<string, string | undefined> = process.env): LaneKind {
+  const browser = browserOfProject(useOf(test));
+  return { ...(browser ? { browser, platform: 'web' } : {}), ...laneKindOf(env) };
 }
 
 function stepsOf(result: PwResult): { steps: StepRecord[]; failedAt?: number } {
@@ -218,7 +254,7 @@ export default class PlaywrightRecorder {
         cwd: process.cwd(),
         keep: (attachment, what, name) => this.keepAttachment(attachment, what, name),
       });
-      writeResult(this.file, record);
+      writeResult(this.file, record, console.error, laneKindOfTest(test));
     } catch (error) {
       console.error(`The report could not record "${test.title}": ${String(error)}`);
     }
