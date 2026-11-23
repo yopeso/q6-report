@@ -3,7 +3,7 @@ export { buildClient } from './build-client.ts';
 export { isFullRun, runContext } from './context.ts';
 export type { Copy } from './copy.ts';
 export { clearStaleStaging, finishLanes, mergeWorkers, newRunId, recordRun, type RecordRunOptions, stagingDir } from './finish.ts';
-export { debugHistoryFile, listDebugProjects, listProjects } from './history.ts';
+export { debugHistoryFile, historyFile, listDebugProjects, listProjects, RUN_LIMIT } from './history.ts';
 export {
   atOf,
   keepImage,

@@ -367,7 +367,7 @@ function checkTypesAsInstalled(installed: string): void {
   const typeCheck = (lines: string[]) => {
     writeFileSync(
       path.join(installed, 'consumer.ts'),
-      [`import { finishLanes, writeReport, type ResultRecord } from 'q6-report';`, ...lines].join('\n') + '\n',
+      [`import { finishLanes, historyFile, RUN_LIMIT, writeReport, type ResultRecord } from 'q6-report';`, ...lines].join('\n') + '\n',
     );
     const options = { module: 'nodenext', moduleResolution: 'nodenext', target: 'es2022', strict: true, noEmit: true, types: ['node'] };
     // The workspace's Node types, as a consumer's own project has them.
@@ -381,6 +381,7 @@ function checkTypesAsInstalled(installed: string): void {
   const right = typeCheck([
     `const result: ResultRecord = { test: 't', name: 't', group: '', tags: [], status: 'passed', ms: 1, steps: [] };`,
     'void finishLanes; void writeReport; void result;',
+    'const newest: string = historyFile("history", "shop"); const kept: number = RUN_LIMIT; void newest; void kept;',
   ]);
   assert.equal(right.code, 0, `A project using the installed package does not type-check:\n${right.output}`);
   const wrong = typeCheck([`const result: ResultRecord = { test: 1 };`, 'void result;']);
