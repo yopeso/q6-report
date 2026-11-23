@@ -172,7 +172,7 @@ repositories {
 }
 
 dependencies {
-  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.1.1")
+  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.1.2")
 }
 ```
 
@@ -433,13 +433,13 @@ A new recorder adds a suite under `recorder-test/` and a line in `recorder-test/
 ## Releasing
 
 A release is a tag, `v` and the version, and the version is three numbers, e.g: `0.1.0`, as npm and PyPI spell a pre-release differently.
-`pnpm set-version` writes it into the four places that carry it, and that change reaches `main` through a pull request like any other:
+`pnpm set-version` writes it into the five places that carry it, and that change reaches `main` through a pull request like any other:
 
 ```bash
-version=0.1.1
+version=0.1.2
 git switch --create "release-$version"
 pnpm set-version "$version"
-git commit --message "Release $version" -- package.json recorders/python/pyproject.toml recorders/junit5/build.gradle.kts recorder-test/junit5/build.gradle.kts
+git commit --message "Release $version" -- package.json recorders/python/pyproject.toml recorders/junit5/build.gradle.kts recorder-test/junit5/build.gradle.kts README.md
 git push --set-upstream origin "release-$version"
 gh pr create --fill
 ```
@@ -460,7 +460,7 @@ The tag starts `.github/workflows/release.yml`:
 | Job | Does |
 |---|---|
 | `checks` | every check, as on a push |
-| `build` | fails unless all four places carry the tag's version, then builds the npm package, the wheel and the JUnit 5 recorder's Maven files, unsigned |
+| `build` | fails unless all five places carry the tag's version, then builds the npm package, the wheel and the JUnit 5 recorder's Maven files, unsigned |
 | `publish` | waits for a maintainer to approve the `release` environment, then signs the Maven files and has Maven Central check them without publishing them, publishes to npm and to PyPI, and has Maven Central publish what it checked; npm and Maven Central skip a version they already have |
 | `installed` | installs the command from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
 
