@@ -439,7 +439,7 @@ Those names are private, so they come in as a pattern through `Q6_REPORT_PRIVATE
 In CI the secret has to be set, and a pull request from a fork, which receives no secret, fails it and says why.
 
 ```text
-ok: 83 files name nothing but q6-report, with the private names checked
+ok: 103 files name nothing but q6-report, with the private names checked
 ```
 
 ### The recorder test
