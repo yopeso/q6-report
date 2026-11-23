@@ -40,11 +40,11 @@ Each builds into what its registry serves, and `pnpm check:recorders` installs e
 |---|---|---|---|
 | npm `q6-report` | the report, the `q6-report` command and its types, with the page already bundled, so it installs with no dependency | `pnpm pack`, which runs `build.ts` first | a `.tgz` |
 | PyPI `q6-report` | the behave recorder, standard library only | `python3 -m pip wheel --no-deps` on `recorders/python` | a `.whl` |
-| Maven Central `io.github.yopeso:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
+| Maven Central `io.github.qa-automation-q6:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
 
 All three carry one version, the last release's, which [Releasing](#releasing) sets.
 `recorders/python/LICENSE` is a copy of `LICENSE`, because a wheel can only carry a file from its own folder, and the recorder test fails if the wheel's copy differs.
-Maven Central verified the group `io.github.yopeso` to Yopeso through its GitHub organisation.
+The group `io.github.qa-automation-q6` is the namespace of the GitHub account `qa-automation-q6`, verified on the Maven Central account that signs in with it, as [Releasing](#releasing) describes.
 
 ## Recorders
 
@@ -172,7 +172,7 @@ repositories {
 }
 
 dependencies {
-  testImplementation("io.github.yopeso:q6-report-junit5:0.0.0")
+  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.1.1")
 }
 ```
 
@@ -460,12 +460,15 @@ The tag starts `.github/workflows/release.yml`:
 | Job | Does |
 |---|---|
 | `checks` | every check, as on a push |
-| `build` | fails unless all four places carry the tag's version, then builds the npm package and the wheel |
-| `npm`, `pypi` | wait for a maintainer to approve the `release` environment, then publish through trusted publishing, so no token is kept; npm skips a version it already has |
-| `installed` | installs the command from npm and the behave recorder from PyPI, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
+| `build` | fails unless all four places carry the tag's version, then builds the npm package, the wheel and the JUnit 5 recorder's Maven files, unsigned |
+| `publish` | waits for a maintainer to approve the `release` environment, then signs the Maven files and has Maven Central check them without publishing them, publishes to npm and to PyPI, and has Maven Central publish what it checked; npm and Maven Central skip a version they already have |
+| `installed` | installs the command from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
 
-A published version is never replaced: PyPI refuses a file name once used, and npm unpublishes a new package only within 72 hours, so a fault is fixed by the next version.
-The JUnit 5 recorder joins once Maven Central's Portal token and signing key are kept as secrets of the `release` environment; until then it is built from this repository.
+Maven Central goes first: it checks the bundle and holds it unpublished until npm and PyPI have published.
+A bundle it refuses fails `publish` before anything is published anywhere, so the tag is deleted as above and the same version is tagged again on the fix.
+When a later step of `publish` fails while Central still holds the bundle unpublished, the bundle is dropped, so running the job again uploads it anew.
+npm and PyPI publish through trusted publishing, so no token of theirs is kept; Maven Central's [token page](https://central.sonatype.org/publish/generate-portal-token/) says "You must use a user token to publish artifacts", so its token and signing key are secrets of the `release` environment.
+A published version is never replaced: PyPI refuses a file name once used, npm unpublishes a new package only within 72 hours, and Maven Central never alters a released component, so a fault is fixed by the next version.
 
 A release is approved on its run's page, under the banner saying `release` requires an approval, or, where that dialog offers no approval, through GitHub's API, with the run's id and the environment's id that `gh api repos/yopeso/q6-report/actions/runs/<run>/pending_deployments` lists:
 
@@ -480,6 +483,35 @@ What a release relies on, set up once:
 | This repository's settings, Environments | the environment `release`, deployable from tags matching `v*` only, with the maintainers who approve a release as its required reviewers |
 | pypi.org, the project's Publishing | the trusted publisher: owner `yopeso`, repository `q6-report`, workflow `release.yml`, environment `release` |
 | npmjs.com | 0.1.0, published by hand from the tarball its release run built, as npm takes a trusted publisher only for a package it already has; publishing needs two-factor on the account, as npm refuses an upload without it |
+| central.sonatype.com | the account that signs in with the GitHub account `qa-automation-q6`, with the namespace `io.github.qa-automation-q6` verified on it, and a user token, kept as the environment's secret `MAVEN_CENTRAL_TOKEN` |
+| keyserver.ubuntu.com | the public half of the signing key, whose private half is the environment's secret `MAVEN_SIGNING_KEY` |
+
+Maven Central is set up once, at https://central.sonatype.com:
+
+1. Sign in with GitHub as `qa-automation-q6`; in the account menu, View Namespaces lists `io.github.qa-automation-q6` as Verified.
+   If it ever has to be verified again, Add Namespace shows a Verification Key: create an empty public repository named after that key in the `qa-automation-q6` account, click Verify Namespace and Confirm, and delete the repository once the namespace says Verified.
+2. Generate a user token at https://central.sonatype.com/usertoken, and keep its username and password joined by a colon, as `<username>:<password>`, which `gh secret set` asks for:
+
+   ```bash
+   gh secret set MAVEN_CENTRAL_TOKEN --env release --repo yopeso/q6-report
+   ```
+
+The token's expiry is the day releases start failing at Maven Central's check, with a 401 and nothing published, and a new token replaces it.
+
+The signing key is made once, in a folder deleted afterwards, so the secret holds its only private copy.
+Maven Central's GPG page says it verifies only against a primary key, and `rsa4096 sign` makes one primary key that signs, with no subkey.
+It has no passphrase, as one would be kept in the same secrets beside it, and it never expires; a lost or leaked key is replaced by running these lines again:
+
+```bash
+export GNUPGHOME="$(mktemp -d /tmp/q6-report-key.XXXXXX)"
+gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key "q6-report releases, Yopeso <the address the key shows>" rsa4096 sign never
+fingerprint="$(gpg --list-secret-keys --with-colons | awk -F: '$1 == "fpr" { print $10; exit }')"
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys "$fingerprint"
+gpg --export-secret-keys --armor "$fingerprint" | gh secret set MAVEN_SIGNING_KEY --env release --repo yopeso/q6-report
+gpgconf --kill gpg-agent
+rm -rf "$GNUPGHOME"
+unset GNUPGHOME
+```
 
 npm's trusted publisher is created on the day of the next release, and not before, as one that has not published within 2 days expires.
 It allows `npm publish` only when told to, and `npm trust` needs npm 11.15.0 or newer:

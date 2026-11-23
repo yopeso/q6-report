@@ -3,16 +3,18 @@ plugins { kotlin("jvm") version "2.0.21" }
 
 repositories {
   // What the recorder publishes, which pnpm check:recorders writes first, so the suite takes it the way a team will,
-  // and never a copy from Maven Central.
-  exclusiveContent {
-    forRepository { maven { url = uri("../../recorders/junit5/build/repo") } }
-    filter { includeGroup("io.github.yopeso") }
+  // and never a copy from Maven Central. A release's recorder test passes -PfromMavenCentral, to take what it published.
+  if (!providers.gradleProperty("fromMavenCentral").isPresent) {
+    exclusiveContent {
+      forRepository { maven { url = uri("../../recorders/junit5/build/repo") } }
+      filter { includeGroup("io.github.qa-automation-q6") }
+    }
   }
   mavenCentral()
 }
 
 dependencies {
-  testImplementation("io.github.yopeso:q6-report-junit5:0.1.1")
+  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.1.1")
   testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
   testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")

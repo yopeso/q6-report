@@ -7,8 +7,8 @@ plugins {
   id("com.gradleup.shadow") version "9.6.1"
 }
 
-// Maven Central verified this group to Yopeso through its GitHub organisation.
-group = "io.github.yopeso"
+// The namespace of the GitHub account qa-automation-q6, verified on its Maven Central account, as README.md says under Releasing.
+group = "io.github.qa-automation-q6"
 version = "0.1.1"
 
 repositories { mavenCentral() }
@@ -66,6 +66,7 @@ publishing {
       pom {
         name.set("q6-report JUnit 5 recorder")
         description.set("Records a JUnit 5 run for q6-report, a test report with history that opens from one file")
+        url.set("https://github.com/yopeso/q6-report")
         licenses {
           license {
             name.set("Apache-2.0")
@@ -75,13 +76,20 @@ publishing {
         developers {
           developer {
             name.set("Leo Mustatea")
+            email.set("49692509+leonardmustatea@users.noreply.github.com")
             organization.set("Yopeso")
             organizationUrl.set("https://www.yopeso.com")
           }
         }
+        scm {
+          connection.set("scm:git:https://github.com/yopeso/q6-report.git")
+          developerConnection.set("scm:git:ssh://git@github.com/yopeso/q6-report.git")
+          url.set("https://github.com/yopeso/q6-report")
+        }
       }
     }
   }
-  // A folder inside the build, which the recorder test installs from, so nothing is written to ~/.m2.
+  // A folder inside the build, which the recorder test installs from, so nothing is written to ~/.m2. The release uploads
+  // this version's folder to Maven Central, signed in a job that runs no build, so no build code ever holds the key.
   repositories { maven { name = "build"; url = uri(layout.buildDirectory.dir("repo")) } }
 }

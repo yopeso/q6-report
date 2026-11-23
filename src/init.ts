@@ -163,7 +163,7 @@ export function initRepository({ dir, version, screenshots, run = runTool }: Ini
 
   if (gradle) {
     said.push(
-      `left to you, in ${gradle}: testImplementation("io.github.yopeso:q6-report-junit5:${version}") and the agent line, as https://github.com/yopeso/q6-report#junit-5 says`,
+      `left to you, in ${gradle}: testImplementation("io.github.qa-automation-q6:q6-report-junit5:${version}") and the agent line, as https://github.com/yopeso/q6-report#junit-5 says`,
     );
   }
 

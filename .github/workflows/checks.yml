@@ -38,6 +38,13 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # The JUnit 5 recorder's check builds its suite with Kotlin 2.0.21, which targets JVM 22 at most, so it fails on a newer
+      # JDK such as the runner image's default, with "Inconsistent JVM-target compatibility"; JDK 21 builds it.
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+
       # --frozen-lockfile fails when package.json asks for something the lockfile does not hold.
       - name: Install
         id: install
