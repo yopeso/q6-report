@@ -1,6 +1,7 @@
 import { laneRate, type Lane, median, type Result, type Run } from '../analysis.ts';
 import { h, hideTip, s, showTip, tipRows, type TipRow } from './dom.ts';
 import { fmtDate, fmtTime, pct } from './format.ts';
+import { laneMarkInChart, laneTag } from './lane-marks.ts';
 
 export interface Axis {
   top: number;
@@ -206,7 +207,7 @@ export function durationBars(runs: Run[], lanes: Lane[], open: (run: Run) => voi
                 `Run #${run.n}, ${fmtDate(run.at)}`,
                 [
                   ['Took', fmtTime(run.ms)],
-                  ...lanes.filter((lane) => run.byLane[lane.id]).map((lane): TipRow => [lane.short, fmtTime(run.byLane[lane.id]!.ms)]),
+                  ...lanes.filter((lane) => run.byLane[lane.id]).map((lane): TipRow => [laneTag(lane), fmtTime(run.byLane[lane.id]!.ms)]),
                 ],
                 'Click to open the run',
               ),
@@ -245,12 +246,16 @@ export function durationBars(runs: Run[], lanes: Lane[], open: (run: Run) => voi
 }
 
 const LANE_COLORS = ['var(--c-lane-1)', 'var(--c-lane-2)', 'var(--c-lane-3)', 'var(--c-lane-4)'];
+/** A lane's logo in a chart, as tall as the chart's labels. */
+const MARK_SIZE = 12;
 export const laneColor = (index: number): string => LANE_COLORS[index % LANE_COLORS.length]!;
 
 /** Pass rate per lane, smoothed over the last 7 runs. */
 export function laneLines(runs: Run[], lanes: Lane[]): Draw {
   return (width, height) => {
-    const margin = { top: 10, right: 92, bottom: 22, left: 38 };
+    // A logo before a lane's name at the end of its line takes its own width and a gap.
+    const markRoom = lanes.some((lane) => lane.mark) ? MARK_SIZE + 4 : 0;
+    const margin = { top: 10, right: 92 + markRoom, bottom: 22, left: 38 };
     const innerWidth_ = width - margin.left - margin.right;
     const innerHeight_ = height - margin.top - margin.bottom;
     const series = lanes.map((lane, index) => ({ lane, color: laneColor(index), values: runs.map((_, i) => laneRate(lane.id, runs, i)) }));
@@ -286,11 +291,13 @@ export function laneLines(runs: Run[], lanes: Lane[]): Draw {
       );
     });
     const ends = series
-      .map((item) => ({ label: item.lane.short, value: item.values.at(-1) ?? 1, y: y(item.values.at(-1) ?? 1) }))
+      .map((item) => ({ lane: item.lane, value: item.values.at(-1) ?? 1, y: y(item.values.at(-1) ?? 1) }))
       .sort((a, b) => a.y - b.y);
     ends.forEach((end, i) => {
       if (i && end.y - ends[i - 1]!.y < 15) end.y = ends[i - 1]!.y + 15;
-      group.append(s('text', { cls: 'endl', x: innerWidth_ + 8, y: end.y + 4, text: `${end.label} ${pct(end.value)}` }));
+      const mark = laneMarkInChart(end.lane, innerWidth_ + 8, end.y - MARK_SIZE / 2, MARK_SIZE);
+      if (mark) group.append(mark);
+      group.append(s('text', { cls: 'endl', x: innerWidth_ + 8 + markRoom, y: end.y + 4, text: `${end.lane.short} ${pct(end.value)}` }));
     });
     const cursor = s('line', { y1: 0, y2: innerHeight_, stroke: 'var(--ink4)', 'stroke-width': 1, opacity: 0 });
     group.append(
@@ -311,7 +318,7 @@ export function laneLines(runs: Run[], lanes: Lane[]): Draw {
           showTip(
             tipRows(
               `Run #${runs[i]!.n}, ${fmtDate(runs[i]!.at)}`,
-              series.map((item): TipRow => [item.lane.short, pct(item.values[i]!, 1), item.color]),
+              series.map((item): TipRow => [laneTag(item.lane), pct(item.values[i]!, 1), item.color]),
               'Pass rate over the 7 runs up to this one',
             ),
             event,

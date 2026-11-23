@@ -2,7 +2,7 @@
 // page. A chart or a route that breaks is invisible to the unit tests, which stop at the numbers behind the page.
 // Pass --keep <dir> to leave the report there and look at it. A script because no shell line drives a browser.
 import { deflateSync } from 'node:zlib';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -11,12 +11,10 @@ import { remote } from 'webdriverio';
 
 import { DEFAULT_BRAND } from '../src/brand.ts';
 import type { Copy } from '../src/copy.ts';
-
 import { appendDebugRun, appendRun } from '../src/history.ts';
-import { HISTORY_VERSION } from '../src/model.ts';
+import { HISTORY_VERSION, type ResultRecord, type RunRecord } from '../src/model.ts';
 import { reportUrl, writeReport } from '../src/render.ts';
 import { sampleHistory } from '../tests/report-fixture.ts';
-import type { ResultRecord, RunRecord } from '../src/model.ts';
 
 function crc32(data: Buffer): number {
   let crc = ~0;
@@ -175,6 +173,73 @@ const shopLook = {
   copy: SHOP_COPY,
 };
 
+/** A lane in each browser and on each phone the page has a logo for. Their labels name no browser, so any other text that does is a lane named without its logo. */
+const MARKED_LANES = [
+  { lane: 'shop-web', short: 'Web', browser: 'chrome', platform: 'web', mark: 'chrome' },
+  { lane: 'shop-web-edge', short: 'Edge', browser: 'edge', platform: 'web', mark: 'edge' },
+  { lane: 'shop-web-firefox', short: 'Firefox', browser: 'firefox', platform: 'web', mark: 'firefox' },
+  { lane: 'shop-web-safari', short: 'Safari', browser: 'safari', platform: 'web', mark: 'safari' },
+  { lane: 'shop-web-webkit', short: 'WebKit', browser: 'webkit', platform: 'web', mark: 'webkit' },
+  { lane: 'shop-android', short: 'Android', platform: 'android', mark: 'android' },
+  { lane: 'shop-ios', short: 'iOS', platform: 'ios', mark: 'ios' },
+] as const;
+/** The Bootstrap Icons file each mark is drawn from; WebKit has no icon of its own, so its lane takes Safari's. */
+const MARK_FILES: Record<string, string> = {
+  chrome: 'chrome.svg',
+  edge: 'edge.svg',
+  firefox: 'firefox.svg',
+  safari: 'safari.svg',
+  webkit: 'safari.svg',
+  android: 'android.svg',
+  ios: 'apple.svg',
+};
+
+/** Each mark's file as the package keeps it, so a page drawing a swapped or edited icon is caught. */
+const markFiles = Object.fromEntries(
+  Object.entries(MARK_FILES).map(([mark, file]) => [
+    mark,
+    readFileSync(path.join(import.meta.dirname, '..', 'src', 'client', 'lane-marks', file), 'utf8'),
+  ]),
+);
+
+/** Two nights on every marked lane: a failure on one lane only, one everywhere, and one that recovers, so chips, causes, the flaky list and the filters all name lanes. */
+function markedHistory(day: number, entry: (typeof MARKED_LANES)[number], index: number): RunRecord {
+  const at = Date.UTC(2026, 10, 20 + day, 2, index);
+  const result = (name: string, isFailed: boolean, error = `Expected "${name}" to hold its total`): ResultRecord => ({
+    test: name,
+    name,
+    group: 'Checkout',
+    tags: ['@e2e'],
+    status: isFailed ? 'failed' : 'passed',
+    ms: 1200 + index * 90,
+    steps: [],
+    ...(isFailed ? { error, kind: 'check' as const, at: 'checkout.feature:4' } : {}),
+  });
+  return {
+    v: HISTORY_VERSION,
+    id: `marked-${day}-${entry.lane}`,
+    runNumber: day + 1,
+    batch: `marked-${day}`,
+    project: 'lanes',
+    lane: entry.lane,
+    laneLabel: `Shop, lane ${index + 1}`,
+    laneShort: entry.short,
+    ...('browser' in entry ? { browser: entry.browser } : {}),
+    platform: entry.platform,
+    isFull: true,
+    startedAt: new Date(at).toISOString(),
+    finishedAt: new Date(at + 60000).toISOString(),
+    trigger: 'Local',
+    notStarted: 0,
+    results: [
+      result('signs in', false),
+      result('pays by card', day === 1 && entry.mark === 'firefox'),
+      result('lists the basket', day === 1, 'Expected "Basket" to list 2 items'),
+      result('keeps the address', day === 0 && entry.mark === 'android'),
+    ],
+  };
+}
+
 const WORDS_OF_ANOTHER_SUITE = /scenario|spec file|platform|reports\/history|Shop tests|TEST_SUITE|pnpm test|session had already/i;
 
 async function main(): Promise<void> {
@@ -253,6 +318,8 @@ async function main(): Promise<void> {
   ).toString('base64');
   appendRun(historyDir, noScreenHistory());
   const noScreen = await writeReport({ historyDir, outDir: path.join(dir, 'report'), project: 'noscreen' });
+  for (const day of [0, 1]) MARKED_LANES.forEach((entry, index) => appendRun(historyDir, markedHistory(day, entry, index)));
+  const marked = await writeReport({ historyDir, outDir: path.join(dir, 'report'), project: 'lanes' });
   const branded = await writeReport({
     historyDir,
     outDir: path.join(dir, 'branded'),
@@ -478,6 +545,7 @@ async function main(): Promise<void> {
     });
     await browser.pause(150);
     const plainTop = await browser.execute(() => ({
+      marks: document.querySelectorAll('[data-mark], .marks-notice').length,
       lanes: [...document.querySelectorAll('.plat-h span')].map((span) => span.textContent ?? ''),
       headLogos: document.querySelectorAll('.brand .logo').length,
       footLogos: document.querySelectorAll('.foot .logo').length,
@@ -491,6 +559,7 @@ async function main(): Promise<void> {
       !plainTop.lanes.some((text) => /chrome\s+chrome/.test(text)),
       `A lane whose label is its name reads twice: ${plainTop.lanes.join(' | ')}`,
     );
+    check(plainTop.marks === 0, `Lanes named chrome and firefox that record no browser draw ${plainTop.marks} logos or notices`);
     check(
       plainTop.headLogos === 0 && plainTop.footLogos === 1 && !plainTop.favicon,
       `A page with no brand draws ${plainTop.headLogos} logos in its header, ${plainTop.footLogos} in its footer, and ${plainTop.favicon ? 'a' : 'no'} favicon`,
@@ -748,6 +817,155 @@ async function main(): Promise<void> {
       [...document.querySelectorAll('.track i')].reduce((sum, bar) => sum + parseFloat((bar as HTMLElement).style.width), 0),
     );
     check(panel && Math.round(why) === 100, `A pass on a retry stretches the failure bar to ${why}%`);
+
+    // Every place that names a lane draws its logo before the name: its file's paths, at the size of the text, in the text's colour in both themes.
+    await browser.url(reportUrl(marked.html));
+    await browser.waitUntil(async () => browser.execute(() => Boolean(document.querySelector('.stats'))), {
+      timeout: 10000,
+      timeoutMsg: 'The page of a lane in each browser never drew',
+    });
+    // Each file's paths as the page's own SVG parser reads them, with the fill rule that decides where a shape has holes.
+    const filePaths = await browser.execute(
+      (files: Record<string, string>) =>
+        Object.fromEntries(
+          Object.entries(files).map(([mark, markup]) => [
+            mark,
+            [...new DOMParser().parseFromString(markup, 'image/svg+xml').querySelectorAll('path')].map(
+              (path) => `${path.getAttribute('fill-rule') ?? 'nonzero'} ${path.getAttribute('d')}`,
+            ),
+          ]),
+        ),
+      markFiles,
+    );
+    const isFromFile = (mark: string, paths: string[]) => paths.length > 0 && JSON.stringify(paths) === JSON.stringify(filePaths[mark]);
+    const markedRun = marked.model.runs.at(-1)!;
+    const onlyHere = markedRun.results.find(
+      (result) => result.status === 'failed' && result.lane === 'shop-web-firefox' && result.test === 'pays by card',
+    )!;
+    const shorts = MARKED_LANES.map((entry) => entry.short).filter((short) => short !== 'Web');
+    const markedRoutes = [
+      '#/',
+      '#/runs',
+      `#/runs/${markedRun.n}`,
+      '#/tests',
+      `#/tests/${encodeURIComponent('keeps the address')}`,
+      `#/runs/${markedRun.n}?r=${markedRun.n}:${encodeURIComponent(onlyHere.lane)}:${encodeURIComponent(onlyHere.test)}`,
+    ];
+    for (const [theme, width] of [
+      ['light', 1440],
+      ['dark', 1440],
+      ['light', 390],
+    ] as const) {
+      await browser.setWindowSize(width, 1000);
+      for (const route of markedRoutes) {
+        await browser.execute(
+          (name: string, hash: string) => {
+            document.documentElement.dataset.theme = name;
+            location.hash = hash;
+          },
+          theme,
+          route,
+        );
+        await browser.pause(150);
+        const page = await browser.execute((names: string[]) => {
+          const lanes = [...document.querySelectorAll('.lane-name')];
+          const marks = [...document.querySelectorAll('.lane-name > .lane-mark, .sheet .chip > .lane-mark')].map((mark) => {
+            const box = mark.getBoundingClientRect();
+            const style = getComputedStyle(mark);
+            const paths = [...mark.querySelectorAll('path')].map(
+              (path) => `${path.getAttribute('fill-rule') ?? 'nonzero'} ${path.getAttribute('d')}`,
+            );
+            return {
+              mark: mark.getAttribute('data-mark') ?? '',
+              paths,
+              width: box.width,
+              height: box.height,
+              fill: style.fill,
+              color: style.color,
+            };
+          });
+          // A lane's name in any other text, outside the footer's notice, is a place that names a lane without its logo; a chart's label sits after its logo.
+          const bare: string[] = [];
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const parent = node.parentElement;
+            if (
+              !parent ||
+              parent.closest('.lane-name, .foot, #tip, script, style') ||
+              parent.previousElementSibling?.hasAttribute('data-mark')
+            )
+              continue;
+            if (parent.closest('.sheet .chip') && parent.closest('.sheet .chip')!.querySelector('.lane-mark')) continue;
+            for (const name of names)
+              if (new RegExp(`(^|[^\\w])${name}([^\\w]|$)`).test(node.textContent ?? ''))
+                bare.push(`${name} in "${(node.textContent ?? '').trim().slice(0, 60)}"`);
+          }
+          const overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+          return {
+            lanes: lanes.length,
+            unmarked: lanes.filter((lane) => !lane.querySelector('.lane-mark')).map((lane) => lane.textContent ?? ''),
+            marks,
+            bare,
+            overflow,
+          };
+        }, shorts);
+        const where = `The page of a lane in each browser, ${route} at ${width}px in ${theme}`;
+        check(page.overflow <= 0, `${where} scrolls sideways by ${page.overflow}px`);
+        // The list of runs counts each run's lanes and names none.
+        check(
+          (route === '#/runs' || page.lanes > 0) && page.unmarked.length === 0,
+          `${where} names ${page.lanes} lanes, ${page.unmarked.length} without a logo: ${page.unmarked.join(', ')}`,
+        );
+        check(page.bare.length === 0, `${where} names a lane without its logo: ${page.bare.join(' | ')}`);
+        for (const mark of page.marks) {
+          check(isFromFile(mark.mark, mark.paths), `${where} draws ${mark.mark} with paths other than its file's`);
+          check(
+            mark.fill === mark.color && (theme === 'light' || mark.color !== 'rgb(0, 0, 0)'),
+            `${where} draws ${mark.mark} in ${mark.fill}, on text in ${mark.color}`,
+          );
+          check(
+            mark.width >= 10 && mark.width <= 20 && Math.abs(mark.width - mark.height) < 0.5,
+            `${where} draws ${mark.mark} at ${mark.width}x${mark.height}`,
+          );
+        }
+      }
+    }
+    await browser.setWindowSize(1440, 1000);
+    await browser.execute(() => {
+      document.documentElement.dataset.theme = 'light';
+      location.hash = '#/';
+    });
+    await browser.pause(150);
+    const overview = await browser.execute(() => {
+      const ends = [...document.querySelectorAll('svg[aria-label="Pass rate per lane"] [data-mark]')].map((mark) => ({
+        mark: mark.getAttribute('data-mark') ?? '',
+        paths: [...mark.querySelectorAll('path')].map((path) => `${path.getAttribute('fill-rule') ?? 'nonzero'} ${path.getAttribute('d')}`),
+      }));
+      const bar = document.querySelector('svg[aria-label="Run duration per run"] .hit')!;
+      const box = bar.getBoundingClientRect();
+      bar.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: box.left + 2, clientY: box.top + 2 }));
+      const tip = [...document.querySelectorAll('#tip .lane-name .lane-mark')].map((mark) => mark.getAttribute('data-mark') ?? '');
+      bar.dispatchEvent(new MouseEvent('mouseleave'));
+      return { ends, tip, notice: document.querySelector('.foot .marks-notice')?.textContent ?? '' };
+    });
+    const everyMark = MARKED_LANES.map((entry) => entry.mark as string).sort();
+    check(
+      JSON.stringify(overview.ends.map((end) => end.mark).sort()) === JSON.stringify(everyMark),
+      `The pass rate chart ends its lines with ${overview.ends.map((end) => end.mark).join(', ')}`,
+    );
+    check(
+      overview.ends.every((end) => isFromFile(end.mark, end.paths)),
+      'A logo at the end of a chart line is not its file',
+    );
+    check(
+      JSON.stringify([...overview.tip].sort()) === JSON.stringify(everyMark),
+      `A run's tooltip names its lanes with ${overview.tip.join(', ')}`,
+    );
+    check(
+      overview.notice ===
+        'Chrome and Android are trademarks of Google LLC. Microsoft Edge is a trademark of the Microsoft group of companies. Firefox and the Firefox logo are trademarks of Mozilla.org in the U.S. and other countries. Safari, WebKit, Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries and regions. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.',
+      `The footer's notice reads "${overview.notice}"`,
+    );
   } finally {
     await browser.deleteSession();
     if (!values.keep) rmSync(dir, { recursive: true, force: true });
@@ -758,7 +976,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   console.info(
-    `The report page holds up: ${routes.length} routes, 2 themes, 2 widths, the trial page, a suite on another framework, a suite with no screen, a brand with a hostile logo, a hostile value, and the sheet, chart and search interactions.`,
+    `The report page holds up: ${routes.length} routes, 2 themes, 2 widths, the trial page, a suite on another framework, a suite with no screen, a brand with a hostile logo, a hostile value, a lane in each browser and on each phone with its logo, and the sheet, chart and search interactions.`,
   );
 }
 

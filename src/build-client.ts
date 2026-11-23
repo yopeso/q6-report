@@ -2,7 +2,7 @@
 declare const __REPORT_CLIENT__: string | undefined;
 
 /**
- * Bundles the report page, with its stylesheet and font, into one script. A report is one file that opens with no
+ * Bundles the report page, with its stylesheet, font and lane logos, into one script. A report is one file that opens with no
  * server and no network, so nothing it needs can stay beside it.
  */
 export async function buildClient(): Promise<string> {
@@ -16,7 +16,7 @@ export async function buildClient(): Promise<string> {
     minify: true,
     format: 'iife',
     target: 'es2022',
-    loader: { '.css': 'text', '.woff2': 'base64' },
+    loader: { '.css': 'text', '.woff2': 'base64', '.svg': 'text' },
   });
   const output = result.outputFiles[0];
   if (!output) throw new Error('Bundling the report page produced no file');

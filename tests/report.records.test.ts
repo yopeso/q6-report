@@ -512,6 +512,22 @@ test('Recording a narrowed run leaves the history and the page of full runs exac
   assert.equal(readDebugHistory(path.join(reportsDir, 'history'), 'p').length, 1);
 });
 
+test('A record naming a browser or platform the page has no logo for is kept as it came, and the caller is told which', async () => {
+  const reportsDir = tempDir();
+  const warned: string[] = [];
+  const record: RunRecord = { ...aRun('a'), lane: 'shop', browser: 'Chrome' as never, platform: 'tv' as never };
+  await recording(reportsDir, record, (message) => warned.push(message));
+  assert.deepEqual(warned, [
+    'The lane shop names its browser "Chrome", and the report knows chrome, edge, firefox, safari, webkit, so it draws the lane without a logo.',
+    'The lane shop names its platform "tv", and the report knows web, android, ios, so it draws the lane without a logo.',
+  ]);
+  const kept = readHistory(path.join(reportsDir, 'history'), 'p')[0]!;
+  assert.deepEqual([kept.browser, kept.platform], ['Chrome', 'tv']);
+  const quiet: string[] = [];
+  await recording(tempDir(), { ...aRun('b'), browser: 'firefox', platform: 'web' }, (message) => quiet.push(message));
+  assert.deepEqual(quiet, [], 'A name the page knows says nothing');
+});
+
 test('A history line that had to be skipped reaches the caller, naming its project and line', async () => {
   const reportsDir = tempDir();
   const history = historyFile(path.join(reportsDir, 'history'), 'p');

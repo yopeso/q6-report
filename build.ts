@@ -55,5 +55,6 @@ const tsc = spawnSync(process.execPath, [path.join(packageDir, 'node_modules', '
 if (tsc.status !== 0) throw new Error('Writing the type declarations failed');
 for (const file of readdirSync(dist).filter((name) => name.endsWith('.d.ts'))) rewriteDeclarationPaths(path.join(dist, file));
 
-// The page carries the Archivo font, and its licence travels with every copy.
+// The page carries the Archivo font and the lane logos from Bootstrap Icons, and each licence travels with every copy.
 copyFileSync(path.join(packageDir, 'src', 'client', 'Archivo-OFL.txt'), path.join(dist, 'Archivo-OFL.txt'));
+copyFileSync(path.join(packageDir, 'src', 'client', 'lane-marks', 'Bootstrap-Icons-MIT.txt'), path.join(dist, 'Bootstrap-Icons-MIT.txt'));

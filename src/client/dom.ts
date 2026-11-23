@@ -1,6 +1,6 @@
 // Every value a run produced reaches the page through text nodes and attributes, never as markup,
 // so an error holding "</script>" or "<img onerror>" is only ever text.
-type Kid = Node | string | number | null | undefined | false;
+export type Kid = Node | string | number | null | undefined | false;
 type Props = Record<string, unknown>;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -87,7 +87,7 @@ export function hideTip(): void {
   tip().style.display = 'none';
 }
 
-export type TipRow = [label: string, value: string | number, color?: string];
+export type TipRow = [label: string | Node, value: string | number, color?: string];
 
 export function tipRows(title: string, rows: TipRow[], hint?: string): HTMLElement {
   return h('div', {}, [

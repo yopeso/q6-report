@@ -16,7 +16,7 @@ import {
 } from './history.ts';
 import { isFullRun, runContext } from './context.ts';
 import { reportFolder, runRoot } from './kit.ts';
-import { HISTORY_VERSION, type ResultRecord, type RunRecord, safeFolderName } from './model.ts';
+import { HISTORY_VERSION, LANE_BROWSERS, LANE_PLATFORMS, type ResultRecord, type RunRecord, safeFolderName } from './model.ts';
 import { reportUrl, writeReport } from './render.ts';
 import { parseResultLine } from './result-line.ts';
 
@@ -120,6 +120,24 @@ async function recordDebugRun({ record, historyDir, outDir, staging, warn, brand
   return reportUrl(written.html);
 }
 
+/**
+ * What a record says its lane ran in or on that the page has no name for, e.g: "Chrome" for "chrome". The record is kept as
+ * it is, since a recording never decides a run, and its lane is drawn without a logo.
+ */
+export function unknownLaneKinds(record: Pick<RunRecord, 'lane' | 'browser' | 'platform'>): string[] {
+  const problems: string[] = [];
+  const { browser, platform } = record as { browser?: string; platform?: string };
+  if (browser !== undefined && !(LANE_BROWSERS as readonly string[]).includes(browser))
+    problems.push(
+      `The lane ${record.lane} names its browser "${browser}", and the report knows ${LANE_BROWSERS.join(', ')}, so it draws the lane without a logo.`,
+    );
+  if (platform !== undefined && !(LANE_PLATFORMS as readonly string[]).includes(platform))
+    problems.push(
+      `The lane ${record.lane} names its platform "${platform}", and the report knows ${LANE_PLATFORMS.join(', ')}, so it draws the lane without a logo.`,
+    );
+  return problems;
+}
+
 /** Adds a finished run to its project's history and rewrites its report. Returns where the page is. */
 export async function recordRun(options: RecordRunOptions): Promise<string> {
   const { record, historyDir, outDir, reportsDir, staging, warn, brand, copy } = options;
@@ -127,6 +145,7 @@ export async function recordRun(options: RecordRunOptions): Promise<string> {
   // The run's id names the folder its images and attachments go in.
   if (safeFolderName(record.id) !== record.id)
     throw new Error(`The run id "${record.id}" cannot name a folder. newRunId gives one that can.`);
+  for (const problem of unknownLaneKinds(record)) warn(problem);
   keepImages(record, historyDir, reportsDir, warn);
   // After the images, as an image the page cannot hold has become an attachment.
   keepAttachments(record, historyDir, reportsDir, warn);

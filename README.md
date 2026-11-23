@@ -369,6 +369,7 @@ Fields a framework cannot fill stay unset, and the page hides what depends on th
 | `attachments` | files a test attached, each with its `name`, the `path` its recorder kept it at, the `attempt` that attached it on a test that ran more than once, and once the run is recorded, where the report keeps it as `stored` |
 | `rerun`, `rerunScope` | the command that runs it again, and what else that command runs: a tag, or empty for the whole lane |
 | `laneShort` | the lane's name where space is short, on the run |
+| `browser`, `platform` | the browser the lane ran in, `chrome`, `edge`, `firefox`, `safari` or `webkit`, and what it ran on, `web`, `android` or `ios`, on the run; the page draws the browser's logo before the lane's name, or the phone's when it names no browser, and the lane's newest run decides; any other value is kept, drawn with no logo and warned about |
 
 A recorder that knows its run was not the whole suite writes what it was instead into `narrowed.txt` in its lane's folder, e.g: the behave recorder after a cancel, and `q6-report finish` records that lane as a trial run unless `Q6_RUN_NARROWED` says otherwise.
 
@@ -388,6 +389,25 @@ A value from a suite reaches the page as text, and a project name becomes one sa
 
 A logo is drawn as an image, so an SVG cannot run anything, and `isOneColour` draws it in the text colour so it reads on both themes.
 A brand that sets `footer` replaces its words and its logo together, so a suite's own words never sit beside Yopeso's logo.
+
+## Lane logos
+
+Wherever the page names a lane, it draws the logo of the browser the lane ran in, or of Android or Apple for a phone, from the record's `browser` and `platform`.
+Each logo is an icon from [Bootstrap Icons](https://icons.getbootstrap.com/) 1.13.2, kept unchanged in `src/client/lane-marks/` and bundled into the page, and `pnpm check:report` compares every logo it draws with its file there.
+Each is one colour and takes the text's, so it reads on both themes.
+
+| Logo | File | Bootstrap icon |
+|---|---|---|
+| Chrome | `chrome.svg` | `browser-chrome` |
+| Edge | `edge.svg` | `browser-edge` |
+| Firefox | `firefox.svg` | `browser-firefox` |
+| Safari, and WebKit | `safari.svg` | `browser-safari` |
+| Android | `android.svg` | `android2` |
+| Apple, for iOS | `apple.svg` | `apple` |
+
+No icon set draws WebKit's own logo, so a WebKit lane takes Safari's, and its name beside it says WebKit.
+Bootstrap Icons is under the MIT licence, whose text is `src/client/lane-marks/Bootstrap-Icons-MIT.txt` and travels with every copy of the package in `dist`.
+The logos stay their owners' trademarks, so the page's footer names each one the page draws, and carries the line Google asks for wherever the Android robot is drawn.
 
 ## Working on it
 
