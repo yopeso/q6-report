@@ -70,6 +70,26 @@ const venvPython = path.join(cacheDir, 'behave-venv', 'bin', 'python');
 const recordersPython = path.join(packageDir, 'recorders', 'python');
 const recordersJunit5 = path.join(packageDir, 'recorders', 'junit5');
 const gradlew = path.join(recordersJunit5, 'gradlew');
+// Kotlin 2.0.21, which junit5/build.gradle.kts builds the suite with, targets JVM 22 at most; on a newer JDK its Java and
+// Kotlin targets differ and Gradle stops with Kotlin's words. Raise this with that Kotlin version.
+const NEWEST_JDK = 22;
+
+/** The java gradlew starts Gradle with, as gradlew picks it: JAVA_HOME's when it is set, else the one on PATH. */
+function gradleJava(): string {
+  const home = process.env.JAVA_HOME;
+  if (!home) return 'java';
+  const legacy = path.join(home, 'jre', 'sh', 'java');
+  return existsSync(legacy) ? legacy : path.join(home, 'bin', 'java');
+}
+
+/** A JDK's feature release from what java -version prints, e.g: 21 from "21.0.5" and 8 from "1.8.0_402". */
+function javaMajor(printed: string): number | undefined {
+  const match = /version "(\d+)(?:\.(\d+))?/.exec(printed);
+  if (!match) return undefined;
+  return Number(match[1] === '1' ? match[2] : match[1]);
+}
+
+const playwrightCli = path.join(packageDir, 'node_modules', 'playwright', 'cli.js');
 const licence = readFileSync(path.join(packageDir, 'LICENSE'));
 // A release's version, which the release workflow sets so each part comes from its registry, as a team installs it.
 const published = process.env.Q6_REPORT_FROM_REGISTRY;
@@ -195,8 +215,14 @@ const junit5: Suite = {
   dir: path.join(here, 'junit5'),
   builtAs: published ? 'release on Maven Central' : 'Maven publication',
   prepare() {
-    const java = spawnSync('java', ['-version'], { encoding: 'utf8' });
+    const java = spawnSync(gradleJava(), ['-version'], { encoding: 'utf8' });
     need(java.status === 0 && !java.error, 'A JDK is missing, and the JUnit 5 recorder runs on one.', 'Install JDK 21.');
+    const major = javaMajor(java.stderr);
+    need(
+      major !== undefined && major <= NEWEST_JDK,
+      `Gradle would run on JDK ${major ?? 'of an unknown version'}, and the JUnit 5 suite builds with a Kotlin that targets JVM ${NEWEST_JDK} at most.`,
+      'Install JDK 21 and point JAVA_HOME at it.',
+    );
     if (published) {
       // Compiling the tests resolves the recorder; Gradle remembers a missing module, so each try asks Maven Central again.
       installWithRetries(`q6-report-junit5 ${published} from Maven Central`, () =>
@@ -233,7 +259,43 @@ const junit5: Suite = {
   },
 };
 
-const SUITES = [behave, junit5];
+const playwrightTest: Suite = {
+  name: 'playwright-test',
+  dir: path.join(here, 'playwright'),
+  builtAs: published ? 'release on npm' : 'npm package',
+  prepare() {
+    const chrome = [
+      '/Applications/Google Chrome.app',
+      '/opt/google/chrome/chrome',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    ];
+    need(
+      chrome.some((file) => existsSync(file)),
+      'Google Chrome is missing, and the Playwright suite drives it.',
+      'Install Chrome.',
+    );
+    need(existsSync(playwrightCli), 'Playwright is missing from this repository.', 'Run pnpm install --frozen-lockfile.');
+    const installed = path.dirname(path.dirname(reportCommand));
+    const resolved = run(
+      process.execPath,
+      ['--input-type=module', '-e', "const recorder = await import('q6-report/playwright'); process.stdout.write(typeof recorder.default)"],
+      process.env,
+      path.dirname(installed),
+    );
+    assert.equal(resolved.output, 'function', `q6-report/playwright does not resolve in the installed package:\n${resolved.output}`);
+  },
+  command(selection) {
+    const recorder = path.join(path.dirname(path.dirname(reportCommand)), 'q6-report', 'dist', 'playwright.js');
+    return {
+      file: process.execPath,
+      args: [playwrightCli, 'test', ...(selection === 'passing' ? ['--grep', 'adds an item'] : [])],
+      env: { Q6_RECORDER: recorder },
+    };
+  },
+  recorderSaid: (output) => output,
+};
+
+const SUITES = [behave, junit5, playwrightTest];
 
 function runSuite(suite: Suite, reportDir: string, selection: 'all' | 'passing' = 'all'): { code: number; output: string } {
   const { file, args, env } = suite.command(selection);
@@ -365,12 +427,23 @@ interface LineAttachment {
   attempt?: number;
 }
 
-/** Each attached file as what it holds, as its name in the lane's folder carries a process id; a binary one by its size. */
+/**
+ * What an attached file holds, for a comparison that holds on every machine: a zip, e.g: a Playwright trace, and a
+ * screenshot differ in size on each, and Playwright's error context ends in a copy of the suite's own source.
+ */
+function contentOf(name: string, bytes: Buffer): string {
+  if (bytes.subarray(0, 2).toString('latin1') === 'PK') return 'a zip archive';
+  if (bytes.subarray(0, 4).equals(PNG_START)) return 'a PNG image';
+  if (bytes.includes(0)) return `${bytes.length} bytes`;
+  const text = bytes.toString('utf8');
+  return name === 'error-context' ? (text.split('\n# Test source')[0] ?? text) : text;
+}
+
+/** Each attached file as what it holds, as its name in the lane's folder carries a process id. */
 const keptFiles = (files: LineAttachment[], laneDir: string) =>
   files.map(({ path: file, ...rest }) => {
     assert.match(file, /^attachments\//, `An attachment is kept inside its lane's folder: ${file}`);
-    const bytes = readFileSync(path.join(laneDir, file));
-    return { ...rest, content: bytes.includes(0) ? `${bytes.length} bytes` : bytes.toString('utf8') };
+    return { ...rest, content: contentOf(rest.name, readFileSync(path.join(laneDir, file))) };
   });
 
 const byTest = <T extends { test: string }>(results: T[]): T[] => [...results].sort((a, b) => a.test.localeCompare(b.test));

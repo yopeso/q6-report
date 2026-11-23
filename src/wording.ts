@@ -1,14 +1,15 @@
 import type { FailureKind } from './model.ts';
 
 const ENVIRONMENT =
-  /session|econnrefused|econnreset|etimedout|enotfound|socket hang up|net::err|did not boot|chromedriver|appium|emulator|simulator|webdriver|proxy error|timed? ?out waiting for (a )?(device|driver)/i;
+  /session|econnrefused|econnreset|etimedout|enotfound|socket hang up|net::err|did not boot|chromedriver|appium|emulator|simulator|webdriver|proxy error|timed? ?out waiting for (a )?(device|driver)|browsertype\.launch|target page, context or browser has been closed/i;
 const WRONG_RESULT = /^expected\b|\bassert|to (read|hold|contain|equal|be|have)\b.* but\b|but (it )?(read|held|was|got)\b/i;
 const NOT_FOUND = /(was )?not (found|displayed|clickable|visible)|still not displayed|never appeared|no such element/i;
 
 /**
  * What an error's wording says it is, for a framework that hands its recorder only text, and for records with no kind.
  * The words are browser and device drivers', network errors' and assertion messages', so an error none of them fits has no
- * kind rather than a guessed one.
+ * kind rather than a guessed one. Playwright says a browser could not start with "browserType.launch:", and one that went
+ * away mid-step with "Target page, context or browser has been closed".
  */
 export function kindFromWords(error: string): FailureKind | undefined {
   // Quotes hold a locator's name or a value from the app, and a button called "Session timeout" is no driver failure.

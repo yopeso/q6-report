@@ -4,8 +4,8 @@ A test report that keeps a project's history in one HTML file, with no server an
 A recorder inside a test suite writes each test's result as it runs, and the `q6-report` command adds the run to the project's history and writes the page again.
 The page opens from the file in a browser, so it can be mailed or kept as a CI artifact as it is.
 
-Recorders for behave and JUnit 5 are here, and a suite on any other framework writes the same lines itself.
-The `q6-report` command installs from npm and the behave recorder from PyPI; the JUnit 5 recorder is not on Maven Central yet, so it installs from what this repository builds, as below.
+Recorders for behave, JUnit 5 and Playwright Test are here, and a suite on any other framework writes the same lines itself.
+The `q6-report` command and the Playwright Test reporter install from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central.
 It is licensed under Apache-2.0, in `LICENSE`, and written by Leo Mustatea, Yopeso.
 
 ## What the page shows
@@ -38,7 +38,7 @@ Each builds into what its registry serves, and `pnpm check:recorders` installs e
 
 | Package | Holds | Built by | Lands in |
 |---|---|---|---|
-| npm `q6-report` | the report, the `q6-report` command and its types, with the page already bundled, so it installs with no dependency | `pnpm pack`, which runs `build.ts` first | a `.tgz` |
+| npm `q6-report` | the report, the `q6-report` command, the Playwright Test reporter `q6-report/playwright` and their types, with the page already bundled, so it installs with no dependency | `pnpm pack`, which runs `build.ts` first | a `.tgz` |
 | PyPI `q6-report` | the behave recorder, standard library only | `python3 -m pip wheel --no-deps` on `recorders/python` | a `.whl` |
 | Maven Central `io.github.qa-automation-q6:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
 
@@ -55,6 +55,7 @@ A recording that breaks never decides a test: the suite's exit code stays its ow
 |---|---|---|
 | behave | Python, standard library only | `recorders/python/q6_report/behave_recorder.py` |
 | JUnit 5, from Kotlin or Java | Java 11, with no dependency at run time | `recorders/junit5/` |
+| Playwright Test | TypeScript, with no dependency: it declares the shapes it reads from Playwright | `src/playwright.ts` |
 | Any other | the suite's own | it writes [the line](#the-line); a suite on Node uses `writeResult`, `laneFolder` and `keepImage` from the npm package |
 
 ### Setting a suite up
@@ -152,22 +153,11 @@ One attached in `after_feature` counts as that feature's last scenario's, becaus
 
 ### JUnit 5
 
-Adding the dependency turns the recorder on, through `META-INF/services`.
-Until it is on Maven Central, a Gradle suite takes it from the folder it is published into.
-
-```text
-$ recorders/junit5/gradlew -p recorders/junit5 publishAllPublicationsToBuildRepository
-> Task :generatePomFileForRecorderPublication
-> Task :publishRecorderPublicationToBuildRepository
-> Task :publishAllPublicationsToBuildRepository
-
-BUILD SUCCESSFUL in 3s
-```
+Adding the dependency from Maven Central turns the recorder on, through `META-INF/services`.
 
 ```kotlin
 // build.gradle.kts
 repositories {
-  maven { url = uri("<this repository>/recorders/junit5/build/repo") }
   mavenCentral()
 }
 
@@ -237,6 +227,44 @@ Report.attach(logPath) // under its file name
 A retried test keeps every attempt's files, each marked with its attempt.
 
 Gradle keeps what a test process prints in its test results and not on its own output, so a recording that failed is said under `build/test-results`.
+
+### Playwright Test
+
+The reporter ships in the npm package as `q6-report/playwright`, and a suite names it in its config.
+Playwright still adds its own printing reporter, because this one prints nothing.
+
+```ts
+// playwright.config.ts
+export default defineConfig({
+  reporter: [['q6-report/playwright']],
+  use: {
+    screenshot: 'only-on-failure',
+    trace: { mode: 'retain-on-failure', screenshots: false, snapshots: true, sources: true },
+  },
+});
+```
+
+Both options are optional: `folder` is where results, images and attachments go, the lane's folder `<dir>/.run/playwright-test/` without it, and `file` is the results file, `playwright-test-<pid>.jsonl` in that folder without it.
+`Q6_REPORT_LANE` renames the lane, e.g: one per Playwright project.
+
+A test is recorded once, at the attempt that decides it, with `attempts` set to the retries it took.
+Its `test` is the spec's path under the config's `rootDir`, then its describes and title joined with ` > `, and a Playwright project that has a name puts it in front, so two browsers running one spec keep two histories.
+Its `steps` are the top-level `test.step` calls, which is all a suite names itself, and `failedAt` is the first of them that failed; an `expect` outside every step has none.
+Playwright hands a reporter an error's text and place and not its type, so `kind` is read from the words: a failed `expect(...)` is `check`, "Test timeout of N ms exceeded" and "Timeout N ms exceeded" are `timeout`, a browser that cannot reach the app is `env`, and anything else is `error`.
+The failure screenshot is the result's image, and every other attachment is kept under its own name, with the attempt that made it, so the failed attempt's trace of a test that passed on its retry stays.
+Playwright's `trace` attachment is kept as "Playwright trace".
+An attachment that has only a body, e.g: `testInfo.attach('notes', { body })`, has no file, so the reporter writes the body to a file of its own, keeps it like any other and removes it.
+`tags` are what Playwright gives, `@` included, whether the test names them in its `tag` option or in its title, and `@bug-42` marks a known bug.
+
+A framework built on Playwright Test extends the class and overrides `keep(file, what, name)`, the one place a file is copied, to keep files somewhere else.
+
+```text
+$ Q6_REPORT_DIR=q6-report npx playwright test
+$ cat q6-report/.run/playwright-test/playwright-test-*.jsonl
+{"v":2,"finishedAt":"2026-11-21T09:18:41.559Z","test":"shop.spec.ts::Cart > totals the cart","name":"totals the cart","group":"Cart","file":"tests/shop.spec.ts","tags":[],"status":"failed","ms":662,"steps":[{"keyword":"","text":"open the shop","status":"passed","ms":1},{"keyword":"","text":"read the cart","status":"failed","ms":506}],"failedAt":1,"error":"expect(received).toBe(expected) // Object.is equality\n\nExpected: \"8 items\"\nReceived: \"1 item\"","at":"tests/shop.spec.ts:16","kind":"check","attempts":2,"image":{"path":"images/80727-1795252721558-test-failed-1.png","type":"image/png"},"attachments":[{"name":"screenshot",...}]}
+```
+
+The line is cut at its attachments here; the real one lists them all.
 
 ### Settings
 
@@ -394,6 +422,7 @@ ok: 83 files name nothing but q6-report, with the private names checked
 
 `pnpm check:recorders` runs a small suite with known outcomes per recorder, on the real framework, and a recorder cannot ship until it passes.
 It installs behave and setuptools into `node_modules/.cache` and takes Gradle from the wrapper, so its first run needs a network; it needs Python 3, a JDK and Chrome, and says which is missing.
+The Playwright suite runs the repository's Playwright on the installed Google Chrome and downloads no browser.
 Each suite takes its recorder from the package that recorder builds into, and every page is written by the `q6-report` command of the npm package, installed from its tarball into an empty folder outside the repository.
 The npm package is also published as a dry run, from its unpacked tarball, and fails on any correction npm would make to its manifest, as npm drops a bin path it finds invalid; its shipped declarations must name their siblings as `.js`, which TypeScript before 5.0 needs, and a project importing the installed package must type-check.
 
@@ -423,7 +452,17 @@ junit5
   ok: the next full run joins the history as run 2
   ok: with a folder that cannot be written, the exit code stays 1 on a failing run and 0 on a passing one
   ok: without its agent, a suite that uses @Step is told that no such step is recorded
-2 recorders passed
+playwright-test
+  ok: its tools are here, and its recorder is installed from its npm package
+  ok: 9 results are exactly the ones expected, each sorted as expected
+  ok: 1 worker wrote its file
+  ok: the page draws 4 causes, the ones expected
+  ok: the page holds all 1 kept images
+  ok: the page links to all 21 attachments in the folder beside it, and holds the ones that are text
+  ok: a pull request's run writes the trial page, and leaves the history and the report byte for byte
+  ok: the next full run joins the history as run 2
+  ok: with a folder that cannot be written, the exit code stays 1 on a failing run and 0 on a passing one
+3 recorders passed
 ```
 
 Each suite's `expected.json` holds the exact records it must produce, with what changes between machines left out.
@@ -462,7 +501,7 @@ The tag starts `.github/workflows/release.yml`:
 | `checks` | every check, as on a push |
 | `build` | fails unless all five places carry the tag's version, then builds the npm package, the wheel and the JUnit 5 recorder's Maven files, unsigned |
 | `publish` | waits for a maintainer to approve the `release` environment, then signs the Maven files and has Maven Central check them without publishing them, publishes to npm and to PyPI, and has Maven Central publish what it checked; npm and Maven Central skip a version they already have |
-| `installed` | installs the command from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
+| `installed` | installs the command and the Playwright Test reporter from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central, as a team does, and runs the recorder test on them, trying again for a few minutes while a registry catches up |
 
 Maven Central goes first: it checks the bundle and holds it unpublished until npm and PyPI have published.
 A bundle it refuses fails `publish` before anything is published anywhere, so the tag is deleted as above and the same version is tagged again on the fix.

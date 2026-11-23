@@ -31,7 +31,11 @@ const dist = path.join(packageDir, 'dist');
 
 rmSync(dist, { recursive: true, force: true });
 await build({
-  entryPoints: [path.join(packageDir, 'src', 'index.ts'), path.join(packageDir, 'src', 'cli.ts')],
+  entryPoints: [
+    path.join(packageDir, 'src', 'index.ts'),
+    path.join(packageDir, 'src', 'cli.ts'),
+    path.join(packageDir, 'src', 'playwright.ts'),
+  ],
   bundle: true,
   splitting: true,
   format: 'esm',

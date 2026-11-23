@@ -1,0 +1,275 @@
+{
+  "workers": 1,
+  "exitCode": 1,
+  "results": [
+    {
+      "test": "shop.spec.ts::Cart > adds an item",
+      "name": "adds an item",
+      "group": "Cart",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'adds an item'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "add 1 item",
+          "status": "passed"
+        }
+      ],
+      "attachments": [
+        {
+          "name": "notes",
+          "attempt": 1,
+          "content": "two steps, no failure"
+        }
+      ]
+    },
+    {
+      "test": "shop.spec.ts::Cart > applies a coupon",
+      "name": "applies a coupon",
+      "group": "Cart",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'applies a coupon'",
+      "steps": []
+    },
+    {
+      "test": "shop.spec.ts::Cart > survives a flaky page",
+      "name": "survives a flaky page",
+      "group": "Cart",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "passed",
+      "attempts": 2,
+      "rerun": "rerun 'survives a flaky page'",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "screenshot",
+          "attempt": 1,
+          "content": "a PNG image"
+        },
+        {
+          "name": "error-context",
+          "attempt": 1,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> Cart >> survives a flaky page\n- Location: tests/shop.spec.ts:28:3\n\n# Error details\n\n```\nError: passes only on the retry\n\nexpect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived:   0\n```\n\n# Page snapshot\n\n```yaml\n- generic [active] [ref=e1]:\n  - heading \"Shop\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: 1 item\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 1,
+          "content": "a zip archive"
+        }
+      ],
+      "category": "flaky"
+    },
+    {
+      "test": "shop.spec.ts::Cart > totals the cart",
+      "name": "totals the cart",
+      "group": "Cart",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "failed",
+      "failedAt": 1,
+      "at": "tests/shop.spec.ts:16",
+      "kind": "check",
+      "attempts": 2,
+      "rerun": "rerun 'totals the cart'",
+      "error": "expect(received).toBe(expected) // Object.is equality\n\nExpected: \"8 items\"\nReceived: \"1 item\"",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "read the cart",
+          "status": "failed"
+        }
+      ],
+      "image": true,
+      "attachments": [
+        {
+          "name": "screenshot",
+          "attempt": 1,
+          "content": "a PNG image"
+        },
+        {
+          "name": "error-context",
+          "attempt": 1,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> Cart >> totals the cart\n- Location: tests/shop.spec.ts:12:3\n\n# Error details\n\n```\nError: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"8 items\"\nReceived: \"1 item\"\n```\n\n# Page snapshot\n\n```yaml\n- generic [active] [ref=e1]:\n  - heading \"Shop\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: 1 item\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 1,
+          "content": "a zip archive"
+        },
+        {
+          "name": "error-context",
+          "attempt": 2,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> Cart >> totals the cart\n- Location: tests/shop.spec.ts:12:3\n\n# Error details\n\n```\nError: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"8 items\"\nReceived: \"1 item\"\n```\n\n# Page snapshot\n\n```yaml\n- generic [active] [ref=e1]:\n  - heading \"Shop\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: 1 item\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 2,
+          "content": "a zip archive"
+        }
+      ],
+      "category": "wrong"
+    },
+    {
+      "test": "shop.spec.ts::Cart > waits for a service that never answers",
+      "name": "waits for a service that never answers",
+      "group": "Cart",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "failed",
+      "kind": "timeout",
+      "attempts": 2,
+      "rerun": "rerun 'waits for a service that never answers'",
+      "error": "Test timeout of 500ms exceeded.",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "error-context",
+          "attempt": 1,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> Cart >> waits for a service that never answers\n- Location: tests/shop.spec.ts:21:3\n\n# Error details\n\n```\nTest timeout of 500ms exceeded.\n```"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 1,
+          "content": "a zip archive"
+        },
+        {
+          "name": "error-context",
+          "attempt": 2,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> Cart >> waits for a service that never answers\n- Location: tests/shop.spec.ts:21:3\n\n# Error details\n\n```\nTest timeout of 500ms exceeded.\n```"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 2,
+          "content": "a zip archive"
+        }
+      ],
+      "category": "timeout"
+    },
+    {
+      "test": "shop.spec.ts::known bug @bug-42",
+      "name": "known bug @bug-42",
+      "group": "",
+      "file": "tests/shop.spec.ts",
+      "tags": ["@bug-42"],
+      "status": "failed",
+      "at": "tests/shop.spec.ts:41",
+      "kind": "check",
+      "attempts": 2,
+      "knownBug": "bug-42",
+      "rerun": "rerun 'known bug @bug-42'",
+      "error": "expect(received).toBe(expected) // Object.is equality\n\nExpected: 3\nReceived: 2",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "error-context",
+          "attempt": 1,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> known bug @bug-42\n- Location: tests/shop.spec.ts:40:1\n\n# Error details\n\n```\nError: expect(received).toBe(expected) // Object.is equality\n\nExpected: 3\nReceived: 2\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 1,
+          "content": "a zip archive"
+        },
+        {
+          "name": "error-context",
+          "attempt": 2,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> known bug @bug-42\n- Location: tests/shop.spec.ts:40:1\n\n# Error details\n\n```\nError: expect(received).toBe(expected) // Object.is equality\n\nExpected: 3\nReceived: 2\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 2,
+          "content": "a zip archive"
+        }
+      ],
+      "category": "known"
+    },
+    {
+      "test": "shop.spec.ts::Tags > is tagged by an option",
+      "name": "is tagged by an option",
+      "group": "Tags",
+      "file": "tests/shop.spec.ts",
+      "tags": ["@smoke"],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'is tagged by an option'",
+      "steps": []
+    },
+    {
+      "test": "shop.spec.ts::Tags > is tagged by its title @fast",
+      "name": "is tagged by its title @fast",
+      "group": "Tags",
+      "file": "tests/shop.spec.ts",
+      "tags": ["@fast"],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'is tagged by its title @fast'",
+      "steps": []
+    },
+    {
+      "test": "shop.spec.ts::throws a plain error outside every step",
+      "name": "throws a plain error outside every step",
+      "group": "",
+      "file": "tests/shop.spec.ts",
+      "tags": [],
+      "status": "failed",
+      "at": "tests/shop.spec.ts:46",
+      "kind": "error",
+      "attempts": 2,
+      "rerun": "rerun 'throws a plain error outside every step'",
+      "error": "TypeError: cart.items is undefined",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        }
+      ],
+      "attachments": [
+        {
+          "name": "error-context",
+          "attempt": 1,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> throws a plain error outside every step\n- Location: tests/shop.spec.ts:44:1\n\n# Error details\n\n```\nTypeError: cart.items is undefined\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 1,
+          "content": "a zip archive"
+        },
+        {
+          "name": "error-context",
+          "attempt": 2,
+          "content": "# Instructions\n\n- Following Playwright test failed.\n- Explain why, be concise, respect Playwright best practices.\n- Provide a snippet of code with the fix, if possible.\n\n# Test info\n\n- Name: shop.spec.ts >> throws a plain error outside every step\n- Location: tests/shop.spec.ts:44:1\n\n# Error details\n\n```\nTypeError: cart.items is undefined\n```\n"
+        },
+        {
+          "name": "Playwright trace",
+          "attempt": 2,
+          "content": "a zip archive"
+        }
+      ],
+      "category": "code"
+    }
+  ],
+  "causes": [
+    ["known bug @bug-42"],
+    ["throws a plain error outside every step"],
+    ["totals the cart"],
+    ["waits for a service that never answers"]
+  ]
+}

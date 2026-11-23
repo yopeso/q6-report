@@ -171,8 +171,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: pnpm install --frozen-lockfile
-      # The recorder test on what a team downloads: the command from npm, the behave recorder from PyPI and the JUnit 5
-      # recorder from Maven Central.
+      # The recorder test on what a team downloads: the command and the Playwright Test reporter from npm, the behave
+      # recorder from PyPI and the JUnit 5 recorder from Maven Central.
       - name: Each recorder writes exactly what it must, from the packages just published
         env:
           Q6_REPORT_FROM_REGISTRY: ${{ github.ref_name }}
