@@ -29,6 +29,11 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      # The JUnit 5 recorder builds on JDK 21, for the reason checks.yml gives.
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
       - run: pnpm install --frozen-lockfile
 
       - name: The tag is the version every part carries
@@ -160,6 +165,11 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      # The recorder test builds its suite with Kotlin on JDK 21, for the reason checks.yml gives.
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
       - run: pnpm install --frozen-lockfile
       # The recorder test on what a team downloads: the command from npm, the behave recorder from PyPI and the JUnit 5
       # recorder from Maven Central.
