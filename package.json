@@ -19,7 +19,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./playwright": "./src/playwright.ts"
+    "./playwright": "./src/playwright.ts",
+    "./mocha": "./src/mocha.ts"
   },
   "types": "./src/index.ts",
   "files": [
@@ -35,6 +36,10 @@
       "./playwright": {
         "types": "./dist/playwright.d.ts",
         "default": "./dist/playwright.js"
+      },
+      "./mocha": {
+        "types": "./dist/mocha.d.ts",
+        "default": "./dist/mocha.js"
       }
     },
     "types": "./dist/index.d.ts",
@@ -69,6 +74,7 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "globals": "^17.13.0",
+    "mocha": "^10.8.2",
     "playwright": "^1.65.1",
     "prettier": "^3.9.10",
     "tsx": "^4.20.6",

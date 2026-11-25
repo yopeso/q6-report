@@ -303,7 +303,56 @@ const playwrightTest: Suite = {
   lane: { browser: 'chrome', platform: 'web' },
 };
 
-const SUITES = [behave, junit5, playwrightTest];
+// Mocha 10, the major WebdriverIO 9's Mocha framework runs, from this repository's own install.
+const mochaCli = path.join(packageDir, 'node_modules', 'mocha', 'bin', 'mocha.js');
+
+const mocha: Suite = {
+  name: 'mocha',
+  dir: path.join(here, 'mocha'),
+  builtAs: published ? 'release on npm' : 'npm package',
+  prepare() {
+    const chrome = [
+      '/Applications/Google Chrome.app',
+      '/opt/google/chrome/chrome',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    ];
+    need(
+      chrome.some((file) => existsSync(file)),
+      'Google Chrome is missing, and the Mocha suite takes its screenshots in it.',
+      'Install Chrome.',
+    );
+    need(existsSync(mochaCli), 'Mocha is missing from this repository.', 'Run pnpm install --frozen-lockfile.');
+    const installed = path.dirname(path.dirname(reportCommand));
+    const resolved = run(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        "const recorder = await import('q6-report/mocha'); process.stdout.write([typeof recorder.MochaRecorder, typeof recorder.mochaHooks.beforeEach, typeof recorder.step].join(' '))",
+      ],
+      process.env,
+      path.dirname(installed),
+    );
+    assert.equal(
+      resolved.output,
+      'function function function',
+      `q6-report/mocha does not resolve in the installed package:\n${resolved.output}`,
+    );
+  },
+  command(selection) {
+    const recorder = path.join(path.dirname(path.dirname(reportCommand)), 'q6-report', 'dist', 'mocha.js');
+    return {
+      file: process.execPath,
+      args: [mochaCli, '--require', recorder, ...(selection === 'passing' ? ['--grep', 'adds an item'] : []), 'tests/shop.spec.mjs'],
+      // Its screenshots come from a headless Chrome, which nothing in Mocha names.
+      env: { Q6_RECORDER: recorder, Q6_REPORT_BROWSER: 'chrome', Q6_REPORT_PLATFORM: 'web' },
+    };
+  },
+  recorderSaid: (output) => output,
+  lane: { browser: 'chrome', platform: 'web' },
+};
+
+const SUITES = [behave, junit5, playwrightTest, mocha];
 
 function runSuite(suite: Suite, reportDir: string, selection: 'all' | 'passing' = 'all'): { code: number; output: string } {
   const { file, args, env } = suite.command(selection);

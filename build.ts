@@ -35,6 +35,7 @@ await build({
     path.join(packageDir, 'src', 'index.ts'),
     path.join(packageDir, 'src', 'cli.ts'),
     path.join(packageDir, 'src', 'playwright.ts'),
+    path.join(packageDir, 'src', 'mocha.ts'),
   ],
   bundle: true,
   splitting: true,
