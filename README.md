@@ -163,7 +163,7 @@ repositories {
 }
 
 dependencies {
-  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.2.0")
+  testImplementation("io.github.qa-automation-q6:q6-report-junit5:0.3.0")
 }
 ```
 
