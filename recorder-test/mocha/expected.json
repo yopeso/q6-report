@@ -1,0 +1,255 @@
+{
+  "workers": 1,
+  "exitCode": 5,
+  "results": [
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > adds an item",
+      "name": "adds an item",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'adds an item'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "add 1 item",
+          "status": "passed"
+        }
+      ],
+      "attachments": [
+        {
+          "name": "notes",
+          "attempt": 1,
+          "content": "two steps, no failure"
+        }
+      ]
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > applies a coupon",
+      "name": "applies a coupon",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'applies a coupon'",
+      "steps": []
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > calls back",
+      "name": "calls back",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'calls back'",
+      "steps": []
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > is skipped as it runs",
+      "name": "is skipped as it runs",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "skipped",
+      "attempts": 1,
+      "rerun": "rerun 'is skipped as it runs'",
+      "steps": []
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > nests a step",
+      "name": "nests a step",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'nests a step'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "outer",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > survives a flaky page",
+      "name": "survives a flaky page",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "passed",
+      "attempts": 2,
+      "rerun": "rerun 'survives a flaky page'",
+      "steps": [],
+      "attachments": [
+        {
+          "name": "screenshot",
+          "attempt": 1,
+          "content": "a PNG image"
+        }
+      ],
+      "category": "flaky"
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > totals the cart",
+      "name": "totals the cart",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "failed",
+      "failedAt": 1,
+      "at": "tests/shop.spec.mjs:44",
+      "kind": "check",
+      "attempts": 1,
+      "rerun": "rerun 'totals the cart'",
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '1 item'\n- '8 items'",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        },
+        {
+          "keyword": "",
+          "text": "read the cart",
+          "status": "failed"
+        }
+      ],
+      "image": true,
+      "category": "wrong"
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Cart > waits for a service that never answers",
+      "name": "waits for a service that never answers",
+      "group": "Cart",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "failed",
+      "kind": "timeout",
+      "attempts": 1,
+      "rerun": "rerun 'waits for a service that never answers'",
+      "error": "Timeout of 500ms exceeded.",
+      "steps": [],
+      "image": true,
+      "category": "timeout"
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Checkout > pays by card",
+      "name": "pays by card",
+      "group": "Checkout",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "failed",
+      "kind": "error",
+      "attempts": 1,
+      "rerun": "rerun 'pays by card'",
+      "error": "Mocha never ran it, e.g: a hook before it failed, or the run bailed",
+      "steps": [],
+      "category": "code"
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::known bug @bug-42",
+      "name": "known bug @bug-42",
+      "group": "",
+      "file": "tests/shop.spec.mjs",
+      "tags": ["@bug-42"],
+      "status": "failed",
+      "at": "tests/shop.spec.mjs:83",
+      "kind": "check",
+      "attempts": 1,
+      "knownBug": "bug-42",
+      "rerun": "rerun 'known bug @bug-42'",
+      "error": "Expected values to be strictly equal:\n\n2 !== 3",
+      "steps": [],
+      "image": true,
+      "category": "known"
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Tags @smoke > is tagged by its suite",
+      "name": "is tagged by its suite",
+      "group": "Tags @smoke",
+      "file": "tests/shop.spec.mjs",
+      "tags": ["@smoke"],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'is tagged by its suite'",
+      "steps": []
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::Tags @smoke > is tagged by its title @fast",
+      "name": "is tagged by its title @fast",
+      "group": "Tags @smoke",
+      "file": "tests/shop.spec.mjs",
+      "tags": ["@smoke", "@fast"],
+      "status": "passed",
+      "attempts": 1,
+      "rerun": "rerun 'is tagged by its title @fast'",
+      "steps": []
+    },
+    {
+      "browser": "chrome",
+      "platform": "web",
+      "test": "tests/shop.spec.mjs::throws a plain error outside every step",
+      "name": "throws a plain error outside every step",
+      "group": "",
+      "file": "tests/shop.spec.mjs",
+      "tags": [],
+      "status": "failed",
+      "at": "tests/shop.spec.mjs:88",
+      "kind": "error",
+      "attempts": 1,
+      "rerun": "rerun 'throws a plain error outside every step'",
+      "error": "TypeError: cart.items is undefined",
+      "steps": [
+        {
+          "keyword": "",
+          "text": "open the shop",
+          "status": "passed"
+        }
+      ],
+      "image": true,
+      "category": "code"
+    }
+  ],
+  "causes": [
+    ["known bug @bug-42"],
+    ["pays by card"],
+    ["throws a plain error outside every step"],
+    ["totals the cart"],
+    ["waits for a service that never answers"]
+  ]
+}

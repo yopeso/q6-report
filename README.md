@@ -4,8 +4,8 @@ A test report that keeps a project's history in one HTML file, with no server an
 A recorder inside a test suite writes each test's result as it runs, and the `q6-report` command adds the run to the project's history and writes the page again.
 The page opens from the file in a browser, so it can be mailed or kept as a CI artifact as it is.
 
-Recorders for behave, JUnit 5 and Playwright Test are here, and a suite on any other framework writes the same lines itself.
-The `q6-report` command and the Playwright Test reporter install from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central.
+Recorders for behave, JUnit 5, Playwright Test and Mocha are here, and a suite on any other framework writes the same lines itself.
+The `q6-report` command, the Playwright Test reporter and the Mocha recorder install from npm, the behave recorder from PyPI and the JUnit 5 recorder from Maven Central.
 It is licensed under Apache-2.0, in `LICENSE`, and written by Leo Mustatea, Yopeso.
 
 ## What the page shows
@@ -38,7 +38,7 @@ Each builds into what its registry serves, and `pnpm check:recorders` installs e
 
 | Package | Holds | Built by | Lands in |
 |---|---|---|---|
-| npm `q6-report` | the report, the `q6-report` command, the Playwright Test reporter `q6-report/playwright` and their types, with the page already bundled, so it installs with no dependency | `pnpm pack`, which runs `build.ts` first | a `.tgz` |
+| npm `q6-report` | the report, the `q6-report` command, the Playwright Test reporter `q6-report/playwright`, the Mocha recorder `q6-report/mocha` and their types, with the page already bundled, so it installs with no dependency | `pnpm pack`, which runs `build.ts` first | a `.tgz` |
 | PyPI `q6-report` | the behave recorder, standard library only | `python3 -m pip wheel --no-deps` on `recorders/python` | a `.whl` |
 | Maven Central `io.github.qa-automation-q6:q6-report-junit5` | the JUnit 5 recorder, which is also the agent behind `@Step`, with Byte Buddy packed inside, and its sources and javadoc | `publishAllPublicationsToBuildRepository` in `recorders/junit5` | `recorders/junit5/build/repo` |
 
@@ -56,6 +56,7 @@ A recording that breaks never decides a test: the suite's exit code stays its ow
 | behave | Python, standard library only | `recorders/python/q6_report/behave_recorder.py` |
 | JUnit 5, from Kotlin or Java | Java 11, with no dependency at run time | `recorders/junit5/` |
 | Playwright Test | TypeScript, with no dependency: it declares the shapes it reads from Playwright | `src/playwright.ts` |
+| Mocha, WebdriverIO's Mocha framework included | TypeScript, with no dependency: it declares the shapes it reads from Mocha | `src/mocha.ts` |
 | Any other | the suite's own | it writes [the line](#the-line); a suite on Node uses `writeResult`, `laneFolder` and `keepImage` from the npm package |
 
 ### Setting a suite up
@@ -267,6 +268,46 @@ $ cat q6-report/.run/playwright-test/playwright-test-*.jsonl
 
 The line is cut at its attachments here; the real one lists them all.
 
+### Mocha
+
+The recorder ships in the npm package as `q6-report/mocha`, a root hook plugin, and a suite requires it, on the command line or in its `.mocharc`.
+A test may mark its steps, attach files and say how to take a screenshot; none is needed for it to be recorded.
+
+```js
+// npx mocha --require q6-report/mocha
+import { attach, screenshots, step } from 'q6-report/mocha';
+
+before(() => screenshots(async () => Buffer.from(await browser.takeScreenshot(), 'base64')));
+
+it('totals the cart', async () => {
+  await step('open the shop', () => browser.url('/'));
+  await step('read the cart', async () => assert.equal(await cartText(), '8 items'));
+  attach('cart log', 'logs/cart.txt');
+});
+```
+
+A test's `steps` are its top-level `step()` calls, a step run inside another being part of it, and `failedAt` is the first that failed.
+`screenshots(take)` hands over a function that returns image bytes; the recorder calls it when the first step fails, while the test still holds its browser or device, or after the test when it failed outside every step.
+`attach(name, file)` keeps the file as it is at that moment, with the attempt that kept it.
+Mocha hands a failed test's error to its reporters only, so the recorder wraps each test's function as the test starts and keeps what it throws, rejects with or hands `done`.
+`kind` is read from the words first, then from the error itself: a failed `expect` or `node:assert` is `check`, a network error is `env`, and a test Mocha's timer ended reads "Timeout of N ms exceeded." and is `timeout`.
+`tags` are the `@word`s of the test's title and its suites' titles, as `--grep` finds them, and `@bug-42` marks a known bug.
+A test skipped by `it.skip` or `this.skip()` is skipped, and one Mocha never ran, e.g: under a `before` hook that failed, is a failure that says so, as Mocha reports the hook and not the test.
+A test is recorded once, at the attempt that decides it, with `attempts` set to the tries it took, and the screenshot of an attempt it retried stays one of its files.
+Its `test` is the spec file's path from the folder Mocha runs in, then its suites and title joined with ` > `.
+
+WebdriverIO's Mocha framework silences every Mocha reporter and runs root hooks from `mochaOpts.require`, which it resolves from its config's folder, so a WebdriverIO suite names the module's file: `require: [fileURLToPath(import.meta.resolve('q6-report/mocha'))]`.
+A framework built on Mocha extends `MochaRecorder`, whose options are `folder`, `file` and `rootDir`, the folder a test's path is read from; it exports the instance's `hooks()` as its own plugin's `mochaHooks`, and overrides `tagsOf(test)` to add tags it takes elsewhere and `keep(file, what, name)` to keep files somewhere else.
+The module has no default export, because Mocha takes a required module's default in place of the module, which would hide `mochaHooks`.
+
+```text
+$ Q6_REPORT_DIR=q6-report npx mocha --require q6-report/mocha tests/shop.spec.mjs
+$ grep '"totals the cart"' q6-report/.run/mocha/mocha-*.jsonl
+{"v":2,"finishedAt":"2026-11-25T14:33:44.928Z","test":"tests/shop.spec.mjs::Cart > totals the cart","name":"totals the cart","group":"Cart","file":"tests/shop.spec.mjs","tags":[],"status":"failed","ms":80,"steps":[{"keyword":"","text":"open the shop","status":"passed","ms":36},{"keyword":"","text":"read the cart","status":"failed","ms":43}],"failedAt":1,"error":"Expected values to be strictly equal:\n+ actual - expected\n\n+ '1 item'\n- '8 items'","stack":...,"at":"tests/shop.spec.mjs:44","kind":"check","attempts":1,"image":{"path":"images/91607-1795617224927-screenshot.png","type":"image/png"}}
+```
+
+The line is cut at its stack here, which names the folder the suite ran in.
+
 ### Settings
 
 Every recorder reads the same ones, and none is needed.
@@ -446,7 +487,7 @@ ok: 103 files name nothing but q6-report, with the private names checked
 
 `pnpm check:recorders` runs a small suite with known outcomes per recorder, on the real framework, and a recorder cannot ship until it passes.
 It installs behave and setuptools into `node_modules/.cache` and takes Gradle from the wrapper, so its first run needs a network; it needs Python 3, a JDK and Chrome, and says which is missing.
-The Playwright suite runs the repository's Playwright on the installed Google Chrome and downloads no browser.
+The Playwright suite runs the repository's Playwright on the installed Google Chrome and downloads no browser, and the Mocha suite runs the repository's Mocha 10, the major WebdriverIO 9's Mocha framework runs, taking its screenshots in a headless Chrome through WebdriverIO.
 Each suite takes its recorder from the package that recorder builds into, and every page is written by the `q6-report` command of the npm package, installed from its tarball into an empty folder outside the repository.
 The npm package is also published as a dry run, from its unpacked tarball, and fails on any correction npm would make to its manifest, as npm drops a bin path it finds invalid; its shipped declarations must name their siblings as `.js`, which TypeScript before 5.0 needs, and a project importing the installed package must type-check.
 
@@ -489,7 +530,18 @@ playwright-test
   ok: a pull request's run writes the trial page, and leaves the history and the report byte for byte
   ok: the next full run joins the history as run 2
   ok: with a folder that cannot be written, the exit code stays 1 on a failing run and 0 on a passing one
-3 recorders passed
+mocha
+  ok: its tools are here, and its recorder is installed from its npm package
+  ok: 13 results are exactly the ones expected, each sorted as expected
+  ok: 1 worker wrote its file
+  ok: its lane is recorded as chrome on web, which the page draws as its icon
+  ok: the page draws 5 causes, the ones expected
+  ok: the page holds all 4 kept images
+  ok: the page links to all 2 attachments in the folder beside it, and holds the ones that are text
+  ok: a pull request's run writes the trial page, and leaves the history and the report byte for byte
+  ok: the next full run joins the history as run 2
+  ok: with a folder that cannot be written, the exit code stays 5 on a failing run and 0 on a passing one
+4 recorders passed
 ```
 
 Each suite's `expected.json` holds the exact records it must produce, with what changes between machines left out.

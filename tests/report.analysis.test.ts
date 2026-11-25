@@ -84,6 +84,9 @@ test('An error is classified by its own words, and a locator name in quotes neve
   );
   assert.equal(classifyError('TypeError: cannot read properties of undefined'), 'unsorted', 'A wording it does not know claims nothing');
   assert.equal(classifyError('"Session timeout banner" was not found within 30000ms'), 'missing');
+  // A scroll that never brings its target into view, on a phone and on Flutter web.
+  assert.equal(classifyError('"Vault item "Automation login 1"" did not come on screen within 10 swipes'), 'missing');
+  assert.equal(classifyError('"Product row" did not come on screen within 12 wheel turns'), 'missing');
   assert.equal(classifyError('Expected "Appium settings" to read "On" but it read "Off"'), 'wrong');
 });
 

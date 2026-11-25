@@ -71,6 +71,12 @@ export default [
     languageOptions: { globals: { ...globals.node } },
   },
 
+  // The recorder test's Mocha suite runs under Mocha, which hands its spec files describe, it and the hooks.
+  {
+    files: ['recorder-test/mocha/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.mocha } },
+  },
+
   // Last, so it turns off every rule Prettier already decides.
   prettier,
 
