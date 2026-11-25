@@ -3,7 +3,8 @@ import type { FailureKind } from './model.ts';
 const ENVIRONMENT =
   /session|econnrefused|econnreset|etimedout|enotfound|socket hang up|net::err|did not boot|chromedriver|appium|emulator|simulator|webdriver|proxy error|timed? ?out waiting for (a )?(device|driver)|browsertype\.launch|target page, context or browser has been closed/i;
 const WRONG_RESULT = /^expected\b|\bassert|to (read|hold|contain|equal|be|have)\b.* but\b|but (it )?(read|held|was|got)\b/i;
-const NOT_FOUND = /(was )?not (found|displayed|clickable|visible)|still not displayed|never appeared|did not come on screen|no such element/i;
+const NOT_FOUND =
+  /(was )?not (found|displayed|clickable|visible)|still not displayed|never appeared|did not come on screen|no such element/i;
 
 /**
  * What an error's wording says it is, for a framework that hands its recorder only text, and for records with no kind.
