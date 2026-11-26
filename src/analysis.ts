@@ -96,6 +96,10 @@ export interface Run {
   url?: string;
   isFull: boolean;
   notStarted: number;
+  /** Each lane of a run split across machines that is missing parts: which ones, of how many. */
+  missingShards: { lane: string; shards: number[]; total: number }[];
+  /** A shard's own run that had no test of its own, which its run's other shards hold. */
+  isEmptyShard: boolean;
   lanes: string[];
   /** What it ran, in the words it was narrowed by; empty when it ran the whole suite. */
   narrowedTo: string;
@@ -209,6 +213,8 @@ function runFrom(n: number, records: RunRecord[]): Run {
     ...(first.url ? { url: first.url } : {}),
     isFull: records.some((record) => record.isFull),
     notStarted: records.reduce((sum, record) => sum + record.notStarted, 0),
+    missingShards: missingShardsOf(records),
+    isEmptyShard: false,
     lanes: [...new Set(records.map((record) => record.lane))],
     narrowedTo: first.narrowedTo ?? '',
     results: [],
@@ -234,7 +240,39 @@ function runFrom(n: number, records: RunRecord[]): Run {
   for (const [lane, counts] of Object.entries(run.byLane)) counts.ms = coveredMs(records.filter((record) => record.lane === lane));
   run.ms = coveredMs(records);
   run.rate = run.passed + run.failed ? run.passed / (run.passed + run.failed) : 1;
+  run.isEmptyShard = !run.total && !run.notStarted && !run.missingShards.length && records.every((record) => record.shard);
   return run;
+}
+
+/**
+ * The parts of each lane's split run that a merge found missing and no record has brought since. A shard's own history
+ * never holds its sibling shards, so only what a merge wrote says a part is missing rather than elsewhere.
+ */
+function missingShardsOf(records: RunRecord[]): Run['missingShards'] {
+  return [...new Set(records.map((record) => record.lane))].flatMap((lane) => {
+    const own = records.filter((record) => record.lane === lane);
+    const present = new Set(own.flatMap((record) => (record.shard ? [record.shard.current] : [])));
+    const shards = [...new Set(own.flatMap((record) => record.missingShards ?? []))].filter((n) => !present.has(n)).sort((a, b) => a - b);
+    const total = Math.max(0, ...own.map((record) => record.shard?.total ?? 0));
+    return shards.length ? [{ lane, shards, total }] : [];
+  });
+}
+
+/** The parts of one lane's split run, in one batch, that none of its records is: 1 to the largest total its records name. */
+export function shardsLeftOut(records: RunRecord[]): number[] {
+  const total = Math.max(0, ...records.map((record) => record.shard?.total ?? 0));
+  const present = new Set(records.flatMap((record) => (record.shard ? [record.shard.current] : [])));
+  return Array.from({ length: total }, (_, i) => i + 1).filter((n) => !present.has(n));
+}
+
+const listed = (numbers: number[]): string =>
+  numbers.length < 2 ? String(numbers[0]) : `${numbers.slice(0, -1).join(', ')} and ${numbers.at(-1)}`;
+
+/** What a run is missing, as one clause, e.g: "shard 3 of 4 of shop-web left no run"; empty when it misses nothing. */
+export function missingShardsClause(run: Pick<Run, 'missingShards'>): string {
+  return run.missingShards
+    .map(({ lane, shards, total }) => `${shards.length === 1 ? 'shard' : 'shards'} ${listed(shards)} of ${total} of ${lane} left no run`)
+    .join(', and ');
 }
 
 /** How long records took together: time two of them overlap counts once, e.g: shards side by side on four machines. */
@@ -606,16 +644,21 @@ export function laneRate(lane: string, runs: Run[], index: number, window = 7): 
 export function verdictOf(run: Run, copy: Copy): { line: string; small: string; isFailing: boolean } {
   const changes = changesOf(run);
   const startUnits = `${run.notStarted} ${run.notStarted === 1 ? copy.startUnit : copy.startUnits}`;
+  // A part of a split run that left no record is missing its tests, so the run is never a pass.
+  const missing = missingShardsClause(run);
+  const Missing = missing && `${missing[0]!.toUpperCase()}${missing.slice(1)}.`;
+  if (run.isEmptyShard)
+    return { line: `This shard had no ${copy.test} of its own.`, small: "Its run's other shards hold them.", isFailing: false };
   if (!run.total)
     return {
       line: 'This run could not start.',
-      small: `${startUnits} failed before any ${copy.test} began.`,
+      small: [run.notStarted ? `${startUnits} failed before any ${copy.test} began.` : '', Missing].filter(Boolean).join(' '),
       isFailing: true,
     };
   if (!run.failed && !run.passed && !run.notStarted)
     return {
       line: run.total === 1 ? 'The one result was skipped.' : `All ${run.total} results were skipped.`,
-      small: 'Nothing was tested.',
+      small: ['Nothing was tested.', Missing].filter(Boolean).join(' '),
       isFailing: true,
     };
   if (!run.failed) {
@@ -624,10 +667,10 @@ export function verdictOf(run: Run, copy: Copy): { line: string; small: string; 
       : run.total === 1
         ? 'The one result passed.'
         : `All ${run.total} results passed.`;
-    if (run.notStarted)
+    if (run.notStarted || missing)
       return {
         line: passed,
-        small: `But ${startUnits} never started.`,
+        small: `But ${[run.notStarted ? `${startUnits} never started` : '', missing].filter(Boolean).join(', and ')}.`,
         isFailing: true,
       };
     return {
@@ -639,7 +682,9 @@ export function verdictOf(run: Run, copy: Copy): { line: string; small: string; 
   const causes = clustersOf([run]).length;
   return {
     line: `${run.failed} of ${run.total} ${run.total === 1 ? 'result' : 'results'} failed, from ${causes} ${causes === 1 ? 'cause' : 'causes'}.`,
-    small: `${changes.fresh.length} new, ${changes.still.length} still failing, ${changes.fixed.length} fixed.`,
+    small: [`${changes.fresh.length} new, ${changes.still.length} still failing, ${changes.fixed.length} fixed.`, Missing]
+      .filter(Boolean)
+      .join(' '),
     isFailing: true,
   };
 }

@@ -7,7 +7,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-import { buildModel } from '../src/analysis.ts';
+import { buildModel, verdictOf } from '../src/analysis.ts';
+import { DEFAULT_COPY } from '../src/copy.ts';
 import { recordRun } from '../src/finish.ts';
 import { appendRun, readDebugHistory, readHistory } from '../src/history.ts';
 import { mergeRuns } from '../src/merge.ts';
@@ -197,7 +198,7 @@ test('A shard that recorded nothing is passed over with a note, and folders that
 
   await assert.rejects(
     mergeRuns({ from: [empty], historyDir: path.join(root, 'none'), outDir, warn: () => {} }),
-    /^Error: None of .*empty-shard holds a run, so nothing was tested/,
+    /^Error: None of .*empty-shard holds a run with a test in it, so nothing was tested/,
   );
   await assert.rejects(
     mergeRuns({ from: [path.join(root, 'no-such-folder')], historyDir, outDir, warn: () => {} }),
@@ -277,4 +278,89 @@ test('A run whose id cannot name a folder is left out with a warning, and nothin
     ['fine'],
   );
   assert.ok(!existsSync(path.join(root, 'job', 'secret')), 'Nothing was copied from outside the shard');
+});
+
+/** Shard n of a four-way split of shop-web, recorded alone as its CI job does; an empty shard records a run with no test. */
+const shardOf4 = (n: number, results: ResultRecord[]) => aShard(`shard-${n}`, results, 0, 5, { shard: { current: n, total: 4 } });
+
+test('A shard that left no run is named by the merge, which fails, and the page says the run is missing it', async () => {
+  const root = tempDir();
+  const folders = [
+    await shardFolder(root, shardOf4(1, [aResult('a')])),
+    await shardFolder(root, shardOf4(2, [aResult('b')])),
+    await shardFolder(root, shardOf4(4, [])),
+  ];
+  const historyDir = path.join(root, 'merged', 'history');
+  const merged = await mergeRuns({ from: folders, historyDir, outDir: path.join(root, 'merged', 'report'), warn: assert.fail });
+  assert.deepEqual(merged.missing, [
+    "Shard 3 of 4 of shop-web left no run in the batch github-42-1 of shop, so its run is missing that part's tests: a part leaves no run when it stops before its first test, and its job's log says why.",
+  ]);
+  assert.equal(merged.pages.length, 1, 'The page is written all the same, showing what ran');
+  const run = modelOf(historyDir).runs[0]!;
+  assert.deepEqual(run.missingShards, [{ lane: 'shop-web', shards: [3], total: 4 }]);
+  assert.deepEqual(verdictOf(run, DEFAULT_COPY), {
+    line: 'All 2 results passed.',
+    small: 'But shard 3 of 4 of shop-web left no run.',
+    isFailing: true,
+  });
+});
+
+test('A shard merged later than its siblings, e.g: from a job run again, is no longer missing', async () => {
+  const root = tempDir();
+  const historyDir = path.join(root, 'merged', 'history');
+  const options = { historyDir, outDir: path.join(root, 'merged', 'report'), warn: assert.fail };
+  const first = await mergeRuns({
+    ...options,
+    from: [await shardFolder(root, shardOf4(1, [aResult('a')])), await shardFolder(root, shardOf4(2, [aResult('b')]))],
+  });
+  assert.deepEqual(
+    modelOf(historyDir).runs[0]!.missingShards,
+    [{ lane: 'shop-web', shards: [3, 4], total: 4 }],
+    'Shards 3 and 4 left no run when it merged',
+  );
+  assert.match(first.missing[0]!, /^Shards 3 and 4 of 4 of shop-web left no run/);
+  const late = await mergeRuns({
+    ...options,
+    from: [await shardFolder(root, shardOf4(3, [aResult('c')])), await shardFolder(root, shardOf4(4, [aResult('d')]))],
+  });
+  assert.deepEqual(late.missing, []);
+  const run = modelOf(historyDir).runs[0]!;
+  assert.deepEqual(run.missingShards, []);
+  assert.equal(verdictOf(run, DEFAULT_COPY).line, 'All 4 results passed.');
+});
+
+test("An empty shard's own page says it had no test of its own, and is not a run that could not start", async () => {
+  const root = tempDir();
+  const folder = await shardFolder(root, shardOf4(4, []));
+  const run = modelOf(path.join(folder, 'history')).runs[0]!;
+  assert.equal(run.isEmptyShard, true);
+  assert.deepEqual(run.missingShards, [], "A shard's own history never says its siblings are missing");
+  assert.deepEqual(verdictOf(run, DEFAULT_COPY), {
+    line: 'This shard had no test of its own.',
+    small: "Its run's other shards hold them.",
+    isFailing: false,
+  });
+});
+
+test('Shards that each had no test of their own are refused, since together they tested nothing', async () => {
+  const root = tempDir();
+  const folders = [await shardFolder(root, shardOf4(1, [])), await shardFolder(root, shardOf4(2, []))];
+  await assert.rejects(
+    mergeRuns({ from: folders, historyDir: path.join(root, 'merged', 'history'), outDir: path.join(root, 'out'), warn: () => {} }),
+    /holds a run with a test in it, so nothing was tested/,
+  );
+});
+
+test('q6-report merge writes the page and exits 1 naming the shard a split run is missing', async () => {
+  const root = tempDir();
+  const folders = [await shardFolder(root, shardOf4(1, [aResult('a')])), await shardFolder(root, shardOf4(2, [aResult('b')]))];
+  const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+  const dir = path.join(root, 'report-job');
+  const ran = spawnSync(process.execPath, ['--import', 'tsx', cli, 'merge', '--dir', dir, ...folders], {
+    encoding: 'utf8',
+    env: { ...process.env, Q6_HISTORY_DIR: '' },
+  });
+  assert.equal(ran.status, 1);
+  assert.match(ran.stdout, /^Merged 2 recorded runs, which the report shows as 1 run\.\nReport: file:\/\/.*shop\.html\n$/);
+  assert.match(ran.stderr, /^Shards 3 and 4 of 4 of shop-web left no run in the batch github-42-1 of shop/);
 });

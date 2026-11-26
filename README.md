@@ -374,7 +374,10 @@ Report: file:///Users/someone/shop/report-job/report/shop.html
 
 The shards are one run of the report when they share a batch, which the CI's run id gives every job of one pipeline; one lane in several batches is merged with a warning naming them, and shows as that many runs.
 Each run the history lacks is added with its screenshots and attachments, full runs to the history and trial runs to the debug history, so merging the same folders again adds nothing.
-A folder with no history is passed over with a note, e.g: a shard that had no test of its own, and folders that hold no run at all are refused, since then nothing was tested.
+A shard that had no test of its own records a run with none, so its own page says so, and the merge knows it ran.
+A part that left no run at all stopped before its first test, e.g: on a value it refused; the merge writes which parts its lane's runs are missing, prints a sentence naming them to stderr and exits 1, and the page says the run is missing them and never reads it as a pass.
+A later merge of that part, e.g: from its job run again, makes the run whole.
+A folder with no history is passed over with a note, and folders whose runs tested nothing are refused, since then nothing was tested.
 A run's time on the page is the time its lanes' records cover together, so four shards of 5 minutes side by side took 5 minutes, and lanes one after another take as long as they all did.
 `mergeRuns` does the same from code, with the suite's brand and copy.
 
@@ -440,6 +443,7 @@ Fields a framework cannot fill stay unset, and the page hides what depends on th
 | `attachments` | files a test attached, each with its `name`, the `path` its recorder kept it at, the `attempt` that attached it on a test that ran more than once, and once the run is recorded, where the report keeps it as `stored` |
 | `rerun`, `rerunScope` | the command that runs it again, and what else that command runs: a tag, or empty for the whole lane |
 | `laneShort` | the lane's name where space is short, on the run |
+| `shard`, `missingShards` | which part of a run split across machines the lane's record is, e.g: `{"current":2,"total":4}`, written by the suite that split it; and the parts a merge found had left no run, written by the merge, since a shard's own history never holds its siblings |
 | `browser`, `platform` | the browser the lane ran in, `chrome`, `chromium`, `edge`, `firefox`, `safari` or `webkit`, and what it ran on, `web`, `android` or `ios`, on the run; the page draws the browser's logo before the lane's name, or the phone's when it names no browser, and the lane's newest run decides; any other value is kept, drawn with no logo and warned about |
 
 A recorder that knows its run was not the whole suite writes what it was instead into `narrowed.txt` in its lane's folder, e.g: the behave recorder after a cancel, and `q6-report finish` records that lane as a trial run unless `Q6_RUN_NARROWED` says otherwise.

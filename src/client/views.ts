@@ -11,6 +11,7 @@ import {
   flakyTests,
   type Lane,
   median,
+  missingShardsClause,
   type Model,
   type Result,
   type Run,
@@ -242,20 +243,36 @@ function clusterRow(model: Model, cluster: Cluster, hasThumbs: boolean): HTMLEle
   ]);
 }
 
+/** Why a split run is missing tests, and where to look: a part leaves no run when it stops before its first test. */
+function missingNote(model: Model, run: Run): string {
+  const clause = missingShardsClause(run);
+  return clause
+    ? `${clause[0]!.toUpperCase()}${clause.slice(1)}, so this run is missing its ${model.copy.tests}: a part leaves no run when it stops before its first ${model.copy.test}, e.g: on a value it refused, and its job's log says why.`
+    : '';
+}
+
 function triagePanel(model: Model, run: Run): HTMLElement {
+  // What never ran needs a person as much as a failure does: spec files that never started, and parts of a split run.
+  const unrun = [
+    run.notStarted ? `${plural(run.notStarted, model.copy.startUnit, model.copy.startUnits)} ${model.copy.notStarted}` : '',
+    missingNote(model, run),
+  ]
+    .filter(Boolean)
+    .join(' ');
   if (!run.total)
     return panel(
       'What needs you',
       null,
       h('p', {
         cls: 'empty',
-        text: `${plural(run.notStarted, model.copy.startUnit, model.copy.startUnits)} ${model.copy.notStarted}`,
+        text: run.isEmptyShard ? `This shard had no ${model.copy.test} of its own, and its run's other shards hold them.` : unrun,
       }),
     );
   const causes = clustersOf([run]).sort((a, b) => {
     const fresh = (cluster: Cluster) => (cluster.results.some((result) => result.prev?.status !== 'failed') ? 1 : 0);
     return fresh(b) - fresh(a) || b.count - a.count;
   });
+  if (!causes.length && unrun) return panel('What needs you', null, h('p', { cls: 'empty', text: unrun }));
   if (!causes.length) {
     const lastBad = [...(model.isDebug ? model.debugRuns : model.runs)].reverse().find((candidate) => candidate.failed > 0);
     return panel(
@@ -277,18 +294,17 @@ function triagePanel(model: Model, run: Run): HTMLElement {
   return panel(
     'What needs you',
     `${plural(causes.length, 'cause')} behind ${plural(run.failed, 'failed result')}, new ones first`,
-    h(
-      'div',
-      {},
+    h('div', {}, [
+      unrun ? h('p', { cls: 'placeholder', style: 'margin:14px 18px', text: unrun }) : null,
       // One panel keeps one layout, so a project with a screen on any lane keeps the tile on all of its causes here.
-      causes.map((cluster) =>
+      ...causes.map((cluster) =>
         clusterRow(
           model,
           cluster,
           causes.some(({ lanes }) => lanes.some((lane) => model.lanesWithImages.has(lane))),
         ),
       ),
-    ),
+    ]),
     { flush: true },
   );
 }
@@ -904,7 +920,7 @@ export function viewRuns(ui: Ui): Node[] {
   const query = ui.runsQuery.toLowerCase();
   const list = [...model.runs]
     .reverse()
-    .filter((run) => ui.runFilter === 'all' || run.failed > 0 || run.notStarted > 0)
+    .filter((run) => ui.runFilter === 'all' || run.failed > 0 || run.notStarted > 0 || run.missingShards.length > 0)
     .filter(
       (run) =>
         !query ||
@@ -1125,6 +1141,7 @@ export function viewRun(ui: Ui, id: string, isDebugRun = false): Node[] {
             text: `${plural(run.notStarted, model.copy.startUnit, model.copy.startUnits)} ${model.copy.notStarted}`,
           })
         : null,
+      run.missingShards.length ? h('p', { cls: 'placeholder', text: missingNote(model, run) }) : null,
       why ? h('div', { style: 'margin-top:14px' }, [why]) : null,
       run.total
         ? h('div', { cls: 'controls', style: 'margin-top:20px' }, [

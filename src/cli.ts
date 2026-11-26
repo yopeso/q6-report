@@ -51,7 +51,9 @@ async function main(): Promise<number> {
     });
     console.log(merged.summary);
     for (const page of merged.pages) console.log(`Report: ${page}`);
-    return 0;
+    // The pages are written either way, so the report shows what ran; a run missing a part still fails its job.
+    for (const sentence of merged.missing) console.error(sentence);
+    return merged.missing.length ? 1 : 0;
   }
   if (positionals[0] !== 'finish' || positionals.length > 1) {
     console.error(USAGE);

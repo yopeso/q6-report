@@ -3,6 +3,7 @@
 import { cpSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
+import { missingShardsClause, shardsLeftOut } from './analysis.ts';
 import type { Brand } from './brand.ts';
 import type { Copy } from './copy.ts';
 import {
@@ -39,6 +40,8 @@ export interface MergedRuns {
   added: number;
   /** What was merged, in one sentence to print: the runs recorded, and how many runs of the report they make. */
   summary: string;
+  /** One sentence for each lane of a split run that is missing parts, which a merge fails on; empty when nothing is missing. */
+  missing: string[];
   /** Every page written again, each project's report of full runs before its debug page. */
   pages: string[];
 }
@@ -114,41 +117,55 @@ function copyRunFiles({ record, source }: Found, historyDir: string): void {
 /**
  * Adds the runs the folders hold and the history lacks, oldest first so they are numbered in the order they ran, and writes
  * each project's pages again. A run the history already holds is left as it is, so merging the same folders twice adds
- * nothing; folders that hold no run at all are refused, since that is a run in which nothing was tested.
+ * nothing; folders whose runs tested nothing are refused, and each part of a split run that left no run is written onto
+ * its lane's runs and returned, for the page to show and the command to fail on.
  */
 export async function mergeRuns(options: MergeRunsOptions): Promise<MergedRuns> {
   const { from, historyDir, outDir, warn, brand, copy } = options;
   if (from.length === 0) throw new Error('Name the reports folders to merge runs from, e.g: one per shard.');
   const found = runsIn(from, warn).sort((a, b) => Date.parse(a.record.startedAt) - Date.parse(b.record.startedAt));
-  if (found.length === 0)
+  // A shard with nothing of its own records a run with no test, so shards that all had none still tested nothing.
+  if (found.every(({ record }) => !record.results.length && !record.notStarted))
     throw new Error(
-      `None of ${from.join(', ')} holds a run, so nothing was tested: every shard had no test of its own, e.g: a TEST_SUITE that matches none, or each stopped before it recorded one.`,
+      `None of ${from.join(', ')} holds a run with a test in it, so nothing was tested: every shard had no test of its own, e.g: a TEST_SUITE that matches none, or each stopped before it recorded one.`,
     );
   const onSkip = (project: string) => (line: number, why: string) => warn(`Skipping line ${line} of the ${project} history: ${why}`);
-  // The ids each project's full and debug histories hold, read once each and kept up to date as runs are added.
-  const held = new Map<string, Set<string>>();
-  const heldBy = (project: string, isDebug: boolean): Set<string> => {
+  // The runs each project's full and debug histories hold, read once each.
+  const held = new Map<string, RunRecord[]>();
+  const heldBy = (project: string, isDebug: boolean): RunRecord[] => {
     const key = `${isDebug}|${project}`;
-    let ids = held.get(key);
-    if (!ids) {
-      const read = isDebug ? readDebugHistory : readHistory;
-      ids = new Set(read(historyDir, project, onSkip(project)).map((run) => run.id));
-      held.set(key, ids);
-    }
-    return ids;
+    if (!held.has(key)) held.set(key, (isDebug ? readDebugHistory : readHistory)(historyDir, project, onSkip(project)));
+    return held.get(key)!;
   };
-  const added: Found[] = [];
-  for (const one of found) {
+  const toAdd = found.filter(({ record, isDebug }) => !heldBy(record.project, isDebug).some((run) => run.id === record.id));
+  // Each lane of a split run, in one batch, with the parts none of its records is, those the history holds included.
+  const groupOf = ({ record, isDebug }: { record: RunRecord; isDebug: boolean }) =>
+    `${isDebug}|${record.project}|${record.batch}|${record.lane}`;
+  const missing: string[] = [];
+  for (const key of new Set(toAdd.map(groupOf))) {
+    const adding = toAdd.filter((one) => groupOf(one) === key);
+    const { record, isDebug } = adding[0]!;
+    const group = [
+      ...adding.map((one) => one.record),
+      ...heldBy(record.project, isDebug).filter((run) => groupOf({ record: run, isDebug }) === key),
+    ];
+    const left = shardsLeftOut(group);
+    if (!left.length) continue;
+    for (const one of adding) one.record.missingShards = left;
+    const total = Math.max(...group.map((run) => run.shard?.total ?? 0));
+    const clause = missingShardsClause({ missingShards: [{ lane: record.lane, shards: left, total }] });
+    missing.push(
+      `${clause[0]!.toUpperCase()}${clause.slice(1)} in the batch ${record.batch} of ${record.project}, so its run is missing that part's tests: a part leaves no run when it stops before its first test, and its job's log says why.`,
+    );
+  }
+  for (const one of toAdd) {
     const { record, isDebug } = one;
-    const ids = heldBy(record.project, isDebug);
-    if (ids.has(record.id)) continue;
     copyRunFiles(one, historyDir);
     if (isDebug) appendDebugRun(historyDir, record, onSkip(record.project));
     else appendRun(historyDir, record, onSkip(record.project));
-    ids.add(record.id);
-    added.push(one);
+    heldBy(record.project, isDebug).push(record);
   }
-  warnOfSplitLanes(added, warn);
+  warnOfSplitLanes(toAdd, warn);
 
   const pages: string[] = [];
   for (const project of [...new Set(found.map(({ record }) => record.project))].sort()) {
@@ -164,5 +181,5 @@ export async function mergeRuns(options: MergeRunsOptions): Promise<MergedRuns> 
     if (full.length) pages.push(reportUrl((await writeReport({ ...common, onSkip: onSkip(project) })).html));
     if (debug.length) pages.push(reportUrl((await writeReport({ ...common, isDebug: true })).html));
   }
-  return { added: added.length, summary: summaryOf(added), pages };
+  return { added: toAdd.length, summary: summaryOf(toAdd), missing, pages };
 }
