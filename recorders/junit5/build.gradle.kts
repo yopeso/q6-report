@@ -9,7 +9,7 @@ plugins {
 
 // The namespace of the GitHub account qa-automation-q6, verified on its Maven Central account, as README.md says under Releasing.
 group = "io.github.qa-automation-q6"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories { mavenCentral() }
 
