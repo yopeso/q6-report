@@ -352,6 +352,35 @@ It exits 1 and says where it looked when no recorder left anything, and 0 otherw
 Finishing clears the lanes it recorded, so a suite run twice with no finish between is one run holding both, with the second's tests numbered `#2`.
 A `.run` folder left by a run cut short has the same effect on the next one.
 
+### Merging the runs of several machines
+
+A run split across machines, e.g: the four shards of a CI matrix, leaves a run in each machine's folder, and a CI saves its cached history once, so one job merges them.
+Each shard's job finishes its own folder with no history restored, and uploads it; the report job restores the history, downloads the folders and merges them, then saves the history:
+
+```text
+$ npx q6-report finish --dir shard-1 --project shop
+Report: file:///Users/someone/shop/shard-1/report/shop.html
+$ npx q6-report finish --dir shard-2 --project shop
+Report: file:///Users/someone/shop/shard-2/report/shop.html
+$ npx q6-report merge --dir report-job shard-1 shard-2
+Merged 2 recorded runs, which the report shows as 1 run.
+Report: file:///Users/someone/shop/report-job/report/shop.html
+```
+
+| Setting | What it does | Without it |
+|---|---|---|
+| `--dir` | the folder the runs join, whose page is written again | `Q6_REPORT_DIR`, or `q6-report` |
+| `Q6_HISTORY_DIR` | the history they join, for a CI that caches it | `history` under that folder |
+
+The shards are one run of the report when they share a batch, which the CI's run id gives every job of one pipeline; one lane in several batches is merged with a warning naming them, and shows as that many runs.
+Each run the history lacks is added with its screenshots and attachments, full runs to the history and trial runs to the debug history, so merging the same folders again adds nothing.
+A shard that had no test of its own records a run with none, so its own page says so, and the merge knows it ran.
+A part that left no run at all stopped before its first test, e.g: on a value it refused; the merge writes which parts its lane's runs are missing, prints a sentence naming them to stderr and exits 1, and the page says the run is missing them and never reads it as a pass.
+A later merge of that part, e.g: from its job run again, makes the run whole.
+A folder with no history is passed over with a note, and folders whose runs tested nothing are refused, since then nothing was tested.
+A run's time on the page is the time its lanes' records cover together, so four shards of 5 minutes side by side took 5 minutes, and lanes one after another take as long as they all did.
+`mergeRuns` does the same from code, with the suite's brand and copy.
+
 ### The line
 
 One JSON object per line, in any file ending `.jsonl` under `<dir>/.run/<lane>/`, with a file per process so parallel workers never share one.
@@ -414,6 +443,7 @@ Fields a framework cannot fill stay unset, and the page hides what depends on th
 | `attachments` | files a test attached, each with its `name`, the `path` its recorder kept it at, the `attempt` that attached it on a test that ran more than once, and once the run is recorded, where the report keeps it as `stored` |
 | `rerun`, `rerunScope` | the command that runs it again, and what else that command runs: a tag, or empty for the whole lane |
 | `laneShort` | the lane's name where space is short, on the run |
+| `shard`, `missingShards` | which part of a run split across machines the lane's record is, e.g: `{"current":2,"total":4}`, written by the suite that split it; and the parts a merge found had left no run, written by the merge, since a shard's own history never holds its siblings |
 | `browser`, `platform` | the browser the lane ran in, `chrome`, `chromium`, `edge`, `firefox`, `safari` or `webkit`, and what it ran on, `web`, `android` or `ios`, on the run; the page draws the browser's logo before the lane's name, or the phone's when it names no browser, and the lane's newest run decides; any other value is kept, drawn with no logo and warned about |
 
 A recorder that knows its run was not the whole suite writes what it was instead into `narrowed.txt` in its lane's folder, e.g: the behave recorder after a cancel, and `q6-report finish` records that lane as a trial run unless `Q6_RUN_NARROWED` says otherwise.

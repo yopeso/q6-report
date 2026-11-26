@@ -108,6 +108,10 @@ export interface RunRecord {
   url?: string;
   /** Files of tests that failed before any test in them began, e.g: a session that could not start. */
   notStarted: number;
+  /** Which part of a run split across machines this lane's record is, e.g: the second of four; unset on a run not split. */
+  shard?: { current: number; total: number };
+  /** The parts of this lane's split run that had left no record when a merge added this one, so the run is missing their tests. */
+  missingShards?: number[];
   results: ResultRecord[];
 }
 

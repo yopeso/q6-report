@@ -16,6 +16,7 @@ export {
   rerunOf,
   writeResult,
 } from './kit.ts';
+export { type MergedRuns, mergeRuns, type MergeRunsOptions } from './merge.ts';
 export {
   type Attachment,
   type FailureKind,
