@@ -223,8 +223,6 @@ function runFrom(n: number, records: RunRecord[]): Run {
   };
   records.forEach((record) => {
     const lane = (run.byLane[record.lane] ??= { total: 0, passed: 0, failed: 0, skipped: 0, ms: 0 });
-    lane.ms += Math.max(0, Date.parse(record.finishedAt) - Date.parse(record.startedAt));
-    run.ms += Math.max(0, Date.parse(record.finishedAt) - Date.parse(record.startedAt));
     record.results.forEach((result) => {
       run.results.push({ ...result, run, lane: record.lane, key: `${result.test}|${record.lane}` });
       run[result.status]++;
@@ -233,8 +231,26 @@ function runFrom(n: number, records: RunRecord[]): Run {
       run.total++;
     });
   });
+  for (const [lane, counts] of Object.entries(run.byLane)) counts.ms = coveredMs(records.filter((record) => record.lane === lane));
+  run.ms = coveredMs(records);
   run.rate = run.passed + run.failed ? run.passed / (run.passed + run.failed) : 1;
   return run;
+}
+
+/** How long records took together: time two of them overlap counts once, e.g: shards side by side on four machines. */
+function coveredMs(records: RunRecord[]): number {
+  const spans = records
+    .map((record) => [Date.parse(record.startedAt), Date.parse(record.finishedAt)] as const)
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0]);
+  let total = 0;
+  let reach = -Infinity;
+  for (const [start, end] of spans) {
+    if (end <= reach) continue;
+    total += end - Math.max(start, reach);
+    reach = end;
+  }
+  return total;
 }
 
 /**

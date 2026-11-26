@@ -352,6 +352,32 @@ It exits 1 and says where it looked when no recorder left anything, and 0 otherw
 Finishing clears the lanes it recorded, so a suite run twice with no finish between is one run holding both, with the second's tests numbered `#2`.
 A `.run` folder left by a run cut short has the same effect on the next one.
 
+### Merging the runs of several machines
+
+A run split across machines, e.g: the four shards of a CI matrix, leaves a run in each machine's folder, and a CI saves its cached history once, so one job merges them.
+Each shard's job finishes its own folder with no history restored, and uploads it; the report job restores the history, downloads the folders and merges them, then saves the history:
+
+```text
+$ npx q6-report finish --dir shard-1 --project shop
+Report: file:///Users/someone/shop/shard-1/report/shop.html
+$ npx q6-report finish --dir shard-2 --project shop
+Report: file:///Users/someone/shop/shard-2/report/shop.html
+$ npx q6-report merge --dir report-job shard-1 shard-2
+Merged 2 recorded runs, which the report shows as 1 run.
+Report: file:///Users/someone/shop/report-job/report/shop.html
+```
+
+| Setting | What it does | Without it |
+|---|---|---|
+| `--dir` | the folder the runs join, whose page is written again | `Q6_REPORT_DIR`, or `q6-report` |
+| `Q6_HISTORY_DIR` | the history they join, for a CI that caches it | `history` under that folder |
+
+The shards are one run of the report when they share a batch, which the CI's run id gives every job of one pipeline; one lane in several batches is merged with a warning naming them, and shows as that many runs.
+Each run the history lacks is added with its screenshots and attachments, full runs to the history and trial runs to the debug history, so merging the same folders again adds nothing.
+A folder with no history is passed over with a note, e.g: a shard that had no test of its own, and folders that hold no run at all are refused, since then nothing was tested.
+A run's time on the page is the time its lanes' records cover together, so four shards of 5 minutes side by side took 5 minutes, and lanes one after another take as long as they all did.
+`mergeRuns` does the same from code, with the suite's brand and copy.
+
 ### The line
 
 One JSON object per line, in any file ending `.jsonl` under `<dir>/.run/<lane>/`, with a file per process so parallel workers never share one.
